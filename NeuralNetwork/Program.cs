@@ -10,12 +10,7 @@ namespace NeuralNetwork
 		static void Main(string[] args)
 		{
 			var set = MnistSet.Load("MNIST");
-			//var set = PatternRecognitionSet.Load("PR");
-			using (StreamWriter writer = new StreamWriter("Experiment" + DateTime.Now.ToString("(yyyy-MM-dd HH-mm-ss)") + ".txt"))
-			{
-				Console.SetOut(writer);
-				TestSdA(set);
-			}
+			TestSdA(set);
 		}
 
 		/// <summary>
@@ -28,26 +23,23 @@ namespace NeuralNetwork
 		/// <param name="pretrainLr">learning rate to be used during pre-training</param>
 		/// <param name="trainingEpochs"></param>
 		/// <param name="batchSize"></param>
-		static void TestSdA(ILearningSet datasets, int batchSize = 1)
+		static void TestSdA(ILearningSet datasets)
 		{
-			for (int neurons = 10; neurons <= 1000; neurons += 10)
-			{
-				var sda = new StackedDenoisingAutoEncoder(new MersenneTwister(89677), datasets.Row * datasets.Column, neurons, 45, 45, 10);
+			var sda = new StackedDenoisingAutoEncoder(new MersenneTwister(89677), datasets.Row * datasets.Column, 45, 45, 45, 10);
 
-				Console.WriteLine("... pre-training the model");
-				var startTime = DateTime.Now;
-				PreTrain(sda, datasets.TrainingData, batchSize);
-				Console.Error.WriteLine("The pretraining code ran for {0}", DateTime.Now - startTime);
+			Console.WriteLine("... pre-training the model");
+			var startTime = DateTime.Now;
+			PreTrain(sda, datasets.TrainingData);
+			Console.Error.WriteLine("The pretraining code ran for {0}", DateTime.Now - startTime);
 
-				Console.WriteLine("... finetunning the model");
-				startTime = DateTime.Now;
-				var result = FineTune(sda, datasets, batchSize);
-				Console.Error.WriteLine("The training code ran for {0}", DateTime.Now - startTime);
-				Console.WriteLine("Optimization complete with best validation score of {0} %, on epoch {1}, with test performance {2} %", result.Item1 * 100.0, result.Item3, result.Item2 * 100.0);
-			}
+			Console.WriteLine("... finetunning the model");
+			startTime = DateTime.Now;
+			var result = FineTune(sda, datasets);
+			Console.Error.WriteLine("The training code ran for {0}", DateTime.Now - startTime);
+			Console.WriteLine("Optimization complete with best validation score of {0} %, on epoch {1}, with test performance {2} %", result.Item1 * 100.0, result.Item3, result.Item2 * 100.0);
 		}
 
-		static void PreTrain(StackedDenoisingAutoEncoder sda, IReadOnlyList<Pattern> dataset, int batchSize, double[] corruptionLevels = null, int epochs = 15, double learningRate = 0.001)
+		static void PreTrain(StackedDenoisingAutoEncoder sda, IReadOnlyList<Pattern> dataset, double[] corruptionLevels = null, int epochs = 15, double learningRate = 0.001)
 		{
 			if (corruptionLevels == null)
 				corruptionLevels = new[] { 0.1, 0.2, 0.3 };
@@ -56,7 +48,7 @@ namespace NeuralNetwork
 			{
 				for (var epoch = 1; epoch <= epochs; epoch++)
 				{
-					var cost = da.Train(dataset, batchSize, learningRate, corruptionLevels[i]);
+					var cost = da.Train(dataset, learningRate, corruptionLevels[i]);
 					Console.WriteLine("Pre-training layer {0}, epoch {1}, cost {2}", i, epoch, cost);
 				}
 				i++;
@@ -73,10 +65,9 @@ namespace NeuralNetwork
 		/// <param name="learningRate"></param>
 		/// <param name="patienceIncrease">wait this much longer when a new best is found</param>
 		/// <param name="improvementThreshold">a relative improvement of this much is considered significant</param>
-		static Tuple<double, double, int> FineTune(StackedDenoisingAutoEncoder sda, ILearningSet datasets, int batchSize, double learningRate = 0.1, int patienceIncrease = 2, double improvementThreshold = 0.995)
+		static Tuple<double, double, int> FineTune(StackedDenoisingAutoEncoder sda, ILearningSet datasets, double learningRate = 0.1, double patienceIncrease = 2.0, double improvementThreshold = 0.995)
 		{
-			var nTrainBatches = datasets.TrainingData.Count / batchSize;
-			var patience = 10 * nTrainBatches; // look as this many examples regardless
+			var patience = 10 * datasets.TrainingData.Count; // look as this many examples regardless
 
 			var bestValidationLoss = double.PositiveInfinity;
 			var testScore = 0.0;
@@ -84,18 +75,18 @@ namespace NeuralNetwork
 
 			for (int epoch = 1, iter = -1; iter < patience; epoch++)
 			{
-				sda.FineTune(datasets.TrainingData, batchSize, learningRate);
+				sda.FineTune(datasets.TrainingData, learningRate);
 				var thisValidationLoss = sda.ComputeErrorRates(datasets.ValidationData);
 				Console.WriteLine("epoch {0}, validation error {1} %", epoch, thisValidationLoss * 100.0);
 
-				iter = nTrainBatches * epoch - 1;
+				iter = datasets.TrainingData.Count * epoch - 1;
 
 				// if we got the best validation score until now
 				if (thisValidationLoss < bestValidationLoss)
 				{
 					//improve patience if loss improvement is good enough
 					if (thisValidationLoss < bestValidationLoss * improvementThreshold)
-						patience = Math.Max(patience, iter * patienceIncrease);
+						patience = Math.Max(patience, (int)(iter * patienceIncrease));
 
 					// save best validation score and iteration number
 					bestValidationLoss = thisValidationLoss;
