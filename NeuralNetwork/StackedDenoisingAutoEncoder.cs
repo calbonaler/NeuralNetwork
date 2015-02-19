@@ -43,34 +43,20 @@ namespace NeuralNetwork
 
 		public readonly IReadOnlyList<DenoisingAutoEncoder> DenoisingAutoEncoders;
 
-		/// <summary>指定されたバッチに対してファインチューニングを実行します。</summary>
+		/// <summary>指定されたデータセットに対してファインチューニングを実行します。</summary>
 		/// <param name="dataset">ファインチューニングに使用されるデータセットを指定します。このデータにはデータ点とラベルが含まれます。</param>
-		/// <param name="batchSize">ファインチューニングで使用されるバッチの大きさを指定します。</param>
 		/// <param name="learningRate">ファインチューニング段階で使用される学習率を指定します。</param>
-		public void FineTune(IEnumerable<Pattern> dataset, int batchSize, double learningRate)
+		public void FineTune(IEnumerable<Pattern> dataset, double learningRate)
 		{
 			double[][] inputs = new double[_layers.Count + 1][];
-			ParameterGradients[] gradients = new ParameterGradients[_layers.Count];
-			foreach (var batch in dataset.Partition(batchSize))
+			foreach (var data in dataset)
 			{
-				if (batchSize > 1)
-					Parallel.For(0, gradients.Length, i => gradients[i] = ParameterGradients.ForBatch(_layers[i].Weight, _layers[i].Bias));
-				else
-					Parallel.For(0, gradients.Length, i => gradients[i] = ParameterGradients.ForOnline(_layers[i].Weight, _layers[i].Bias));
-				foreach (var data in batch)
-				{
-					inputs[0] = data.Image;
-					for (int n = 0; n < _layers.Count; n++)
-						inputs[n + 1] = _layers[n].Compute(inputs[n]);
-					Func<int, double> upperInfo = i => i == data.Label ? 1.0 : 0.0;
-					for (int n = _layers.Count - 1; n >= 0; n--)
-						upperInfo = _layers[n].GetParameterGradients(inputs[n], inputs[n + 1], upperInfo, learningRate, gradients[n]);
-				}
-				if (batchSize > 1)
-				{
-					for (int n = 0; n < _layers.Count; n++)
-						gradients[n].UpdateParameters(batchSize);
-				}
+				inputs[0] = data.Image;
+				for (int n = 0; n < _layers.Count; n++)
+					inputs[n + 1] = _layers[n].Compute(inputs[n]);
+				Func<int, double> upperInfo = i => i == data.Label ? 1.0 : 0.0;
+				for (int n = _layers.Count - 1; n >= 0; n--)
+					upperInfo = _layers[n].Learn(inputs[n], inputs[n + 1], upperInfo, learningRate);
 			}
 		}
 

@@ -15,11 +15,10 @@ namespace NeuralNetwork
 		{
 			Weight = weight;
 			Bias = new double[weight.GetLength(0)];
-			Activation = activation;
+			_activation = activation;
 		}
 
-		/// <summary>この層の活性化関数を示します。</summary>
-		protected readonly Action<Func<int, double>, double[]> Activation;
+		readonly Action<Func<int, double>, double[]> _activation;
 		
 		/// <summary>この層の結合重みを示します。</summary>
 		public readonly double[,] Weight;
@@ -33,28 +32,30 @@ namespace NeuralNetwork
 		public double[] Compute(IEnumerable<double> input)
 		{
 			var output = new double[Weight.GetLength(0)];
-			Activation(j => input.Select((x, k) => x * Weight[j, k]).Sum() + Bias[j], output);
+			_activation(j => input.Select((x, k) => x * Weight[j, k]).Sum() + Bias[j], output);
 			return output;
 		}
 		
-		/// <summary>この層の結合重みとバイアスに対するニューラルネットワークのコストの勾配ベクトルを計算し、下位層の勾配計算に必要な情報を返します。</summary>
+		/// <summary>この層の学習を行い、下位層の学習に必要な情報を返します。</summary>
 		/// <param name="input">この層への入力を示すベクトルを指定します。</param>
 		/// <param name="output">この層からの出力を示すベクトルを指定します。</param>
-		/// <param name="upperInfo">上位層から得られた勾配計算に必要な情報を指定します。この層が出力層の場合、これは教師信号になります。</param>
+		/// <param name="upperInfo">上位層から得られた学習に必要な情報を指定します。この層が出力層の場合、これは教師信号になります。</param>
 		/// <param name="learningRate">結合重みとバイアスをどれほど更新するかを示す値を指定します。</param>
-		/// <param name="gradients">計算された勾配が格納される <see cref="ParameterGradients"/> インターフェイスを指定します。</param>
-		/// <returns>下位層の勾配計算に必要な情報を示すデリゲート。</returns>
-		public Func<int, double> GetParameterGradients(IReadOnlyList<double> input, IReadOnlyList<double> output, Func<int, double> upperInfo, double learningRate, ParameterGradients gradients)
+		/// <returns>下位層の学習に必要な情報を示すデリゲート。</returns>
+		public Func<int, double> Learn(IReadOnlyList<double> input, IReadOnlyList<double> output, Func<int, double> upperInfo, double learningRate)
 		{
-			double[] delta = new double[Weight.GetLength(0)];
+			double[,] lowerInfo = new double[Weight.GetLength(0), Weight.GetLength(1)];
 			Parallel.For(0, Weight.GetLength(0), i =>
 			{
-				delta[i] = GetDelta(i, output, upperInfo);
+				var deltaI = GetDelta(i, output, upperInfo);
 				for (int j = 0; j < Weight.GetLength(1); j++)
-					gradients.Weight[i, j] -= learningRate * (delta[i] * input[j]);
-				gradients.Bias[i] -= learningRate * delta[i];
+				{
+					lowerInfo[i, j] = Weight[i, j] * deltaI;
+					Weight[i, j] -= learningRate * (deltaI * input[j]);
+				}
+				Bias[i] -= learningRate * deltaI;
 			});
-			return j => Enumerable.Range(0, gradients.UnmodifiedWeight.GetLength(0)).Select(i => gradients.UnmodifiedWeight[i, j] * delta[i]).Sum();
+			return j => Enumerable.Range(0, lowerInfo.GetLength(0)).Sum(i => lowerInfo[i, j]);
 		}
 
 		/// <summary>この層の線形計算の結果に対するニューラルネットワークのコストの勾配ベクトル (Delta) を計算します。</summary>
@@ -139,39 +140,5 @@ namespace NeuralNetwork
 		/// <param name="computed">このロジスティック回帰の計算結果を指定します。</param>
 		/// <returns>推定された確率最大のクラスのインデックス。</returns>
 		public static int Predict(IEnumerable<double> computed) { return computed.Select((x, i) => new KeyValuePair<int, double>(i, x)).Aggregate((x, y) => x.Value > y.Value ? x : y).Key; }
-	}
-
-	public sealed class ParameterGradients
-	{
-		ParameterGradients(double[,] weight, double[] bias, double[,] unmodifiedWeight, double[] unmodifiedBias)
-		{
-			Weight = weight;
-			Bias = bias;
-			UnmodifiedWeight = unmodifiedWeight;
-			_unmodifiedBias = unmodifiedBias;
-		}
-
-		internal readonly double[,] Weight;
-
-		internal readonly double[] Bias;
-
-		internal readonly double[,] UnmodifiedWeight;
-
-		readonly double[] _unmodifiedBias;
-
-		public static ParameterGradients ForBatch(double[,] weight, double[] bias) { return new ParameterGradients(new double[weight.GetLength(0), weight.GetLength(1)], new double[bias.Length], weight, bias); }
-
-		public static ParameterGradients ForOnline(double[,] weight, double[] bias) { return new ParameterGradients(weight, bias, (double[,])weight.Clone(), null); }
-
-		public void UpdateParameters(int updates)
-		{
-			Parallel.For(0, Weight.GetLength(0), i =>
-			{
-				for (int j = 0; j < Weight.GetLength(1); j++)
-					UnmodifiedWeight[i, j] += Weight[i, j] / updates;
-				if (_unmodifiedBias != null)
-					_unmodifiedBias[i] += Bias[i] / updates;
-			});
-		}
 	}
 }

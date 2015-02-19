@@ -40,7 +40,6 @@
   <ItemGroup>
     <Compile Include="DenoisingAutoEncoder.cs" />
     <Compile Include="Layers.cs" />
-    <Compile Include="LinqExtensions.cs" />
     <Compile Include="MersenneTwister.cs" />
     <Compile Include="LearningSet.cs" />
     <Compile Include="Functions.cs" />
