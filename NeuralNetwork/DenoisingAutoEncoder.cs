@@ -66,7 +66,7 @@ namespace NeuralNetwork
 					delta[i] = 0;
 					for (int j = 0; j < _weight.GetLength(1); j++)
 						delta[i] += (reconstructed[j] - image[j]) * _weight[i, j];
-					delta[i] *= ActivationFunction.Sigmoid.Differentiated(latent, i);
+					delta[i] *= ActivationFunction.Sigmoid.Differentiated(latent[i]);
 					_hiddenBias[i] -= learningRate * delta[i];
 				});
 				Parallel.For(0, _weight.GetLength(1), j =>

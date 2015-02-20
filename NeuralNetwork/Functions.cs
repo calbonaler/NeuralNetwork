@@ -7,7 +7,7 @@ namespace NeuralNetwork
 {
 	public sealed class ActivationFunction
 	{
-		ActivationFunction(Action<Func<int, double>, double[]> normal, Func<IReadOnlyList<double>, int, double> differentiated)
+		ActivationFunction(Action<Func<int, double>, double[]> normal, Func<double, double> differentiated)
 		{
 			Normal = normal;
 			Differentiated = differentiated;
@@ -15,12 +15,12 @@ namespace NeuralNetwork
 
 		public static readonly ActivationFunction Sigmoid = new ActivationFunction(
 			(x, res) => Parallel.For(0, res.Length, i => res[i] = 1 / (1 + Math.Exp(-x(i)))),
-			(y, i) => y[i] * (1 - y[i])
+			y => y * (1 - y)
 		);
 
 		public readonly Action<Func<int, double>, double[]> Normal;
 
-		public readonly Func<IReadOnlyList<double>, int, double> Differentiated;
+		public readonly Func<double, double> Differentiated;
 
 		public static void Identity(Func<int, double> input, double[] result) { Parallel.For(0, result.Length, i => result[i] = input(i)); }
 
