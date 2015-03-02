@@ -5,13 +5,22 @@ using System.Linq;
 
 namespace NeuralNetwork
 {
-	public interface ILearningSet
+	public class LearningSet
 	{
-		IReadOnlyList<Pattern> TrainingData { get; }
-		IReadOnlyList<Pattern> ValidationData { get; }
-		IReadOnlyList<Pattern> TestData { get; }
-		int Row { get; }
-		int Column { get; }
+		public LearningSet(IEnumerable<Pattern> trainingData, IEnumerable<Pattern> testData, int row, int column, int classCount)
+		{
+			TrainingData = trainingData.ToArray();
+			TestData = testData.ToArray();
+			Row = row;
+			Column = column;
+			ClassCount = classCount;
+		}
+		public readonly IReadOnlyList<Pattern> TrainingData;
+		public readonly IReadOnlyList<Pattern> TestData;
+		public readonly int Row;
+		public readonly int Column;
+		public readonly int ClassCount;
+		public LearningSet Subset(int trainingDataCount, int testDataCount) { return new LearningSet(TrainingData.Take(trainingDataCount), TestData.Take(testDataCount), Row, Column, ClassCount); }
 	}
 
 	public class Pattern
@@ -21,32 +30,13 @@ namespace NeuralNetwork
 			Label = label;
 			Image = image;
 		}
-		public int Label { get; private set; }
-		public double[] Image { get; private set; }
+		public readonly int Label;
+		public readonly double[] Image;
 		public override string ToString() { return "Image: " + Image + ", Label: " + Label; }
 	}
 
-	public class MnistSet : ILearningSet
+	public static class MnistSet
 	{
-		MnistSet(IEnumerable<Pattern> trainingData, IEnumerable<Pattern> validationData, IEnumerable<Pattern> testData, int row, int column)
-		{
-			TrainingData = trainingData.Take(5000).ToArray();
-			ValidationData = validationData.Take(1000).ToArray();
-			TestData = testData.Take(1000).ToArray();
-			Row = row;
-			Column = column;
-		}
-
-		public IReadOnlyList<Pattern> TrainingData { get; private set; }
-
-		public IReadOnlyList<Pattern> ValidationData { get; private set; }
-
-		public IReadOnlyList<Pattern> TestData { get; private set; }
-
-		public int Row { get; private set; }
-
-		public int Column { get; private set; }
-
 		static uint BigEndianToLittleEndian(uint value)
 		{
 			return
@@ -56,19 +46,13 @@ namespace NeuralNetwork
 				(value & 0xFF000000) >> 24;
 		}
 		
-		public static MnistSet Load(string directoryName)
+		public static LearningSet Load(string directoryName)
 		{
 			var trainSet = LoadInternal(directoryName + "/train");
 			var testSet = LoadInternal(directoryName + "/t10k");
 			if (trainSet.Item2 != testSet.Item2 || trainSet.Item3 != testSet.Item3)
 				return null;
-			return new MnistSet(
-				trainSet.Item1.Take(trainSet.Item1.Length - testSet.Item1.Length),
-				trainSet.Item1.Skip(trainSet.Item1.Length - testSet.Item1.Length),
-				testSet.Item1,
-				trainSet.Item2,
-				trainSet.Item3
-			);
+			return new LearningSet(trainSet.Item1, testSet.Item1, trainSet.Item2, trainSet.Item3, 10);
 		}
 
 		static Tuple<Pattern[], int, int> LoadInternal(string fileName)
@@ -101,30 +85,14 @@ namespace NeuralNetwork
 		}
 	}
 
-	public class PatternRecognitionSet : ILearningSet
+	public static class PatternRecognitionSet
 	{
-		PatternRecognitionSet(IEnumerable<Pattern> trainingData, IEnumerable<Pattern> testData)
+		public static LearningSet Load(string directoryName)
 		{
-			TrainingData = trainingData.ToArray();
-			TestData = testData.ToArray();
-			ValidationData = TestData;
-		}
-
-		public IReadOnlyList<Pattern> TrainingData { get; private set; }
-
-		public IReadOnlyList<Pattern> ValidationData { get; private set; }
-
-		public IReadOnlyList<Pattern> TestData { get; private set; }
-
-		public int Row { get { return 7; } }
-
-		public int Column { get { return 5; } }
-
-		public static PatternRecognitionSet Load(string directoryName)
-		{
-			return new PatternRecognitionSet(
+			return new LearningSet(
 				LoadPatterns(directoryName + "/pattern2learn.dat"),
-				LoadPatterns(directoryName + "/pattern2recog.dat")
+				LoadPatterns(directoryName + "/pattern2recog.dat"),
+				7, 5, 10
 			);
 		}
 
