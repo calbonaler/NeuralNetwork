@@ -30,13 +30,10 @@
    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-using System;
-using System.Threading;
-
 namespace NeuralNetwork
 {
 	/// <summary>MT19937 メルセンヌツイスタによる疑似乱数生成器を表します。</summary>
-	public class MersenneTwister : Random
+	public sealed class MersenneTwister
 	{
 		/// <summary>指定されたシード値を使用して、<see cref="MersenneTwister"/> クラスの新しいインスタンスを初期化します。</summary>
 		/// <param name="seed">疑似乱数生成器を初期化するシード値を指定します。</param>
@@ -79,49 +76,12 @@ namespace NeuralNetwork
 			return result;
 		}
 
-		/// <summary>指定した範囲内の乱数を返します。</summary>
-		/// <param name="minValue">返される乱数の包括的下限値を指定します。</param>
-		/// <param name="maxValue">返される乱数の排他的上限値を指定します。 <paramref name="maxValue"/> は <paramref name="minValue"/> 以上である必要があります。</param>
-		/// <returns>
-		/// <paramref name="minValue"/> 以上で <paramref name="maxValue"/> 未満の 32 ビット符号付整数。
-		/// つまり、戻り値の範囲に <paramref name="minValue"/> は含まれますが <paramref name="maxValue"/> は含まれません。
-		/// <paramref name="minValue"/> が <paramref name="maxValue"/> と等しい場合は、<paramref name="minValue"/> が返されます。
-		/// </returns>
-		public override int Next(int minValue, int maxValue) { return (int)(NextUInt32() / ((double)uint.MaxValue + 1) * ((long)maxValue - minValue) + minValue); }
-
-		/// <summary>指定した最大値より小さい 0 以上の乱数を返します。</summary>
-		/// <param name="maxValue">生成される乱数の排他的上限値を指定します。 <paramref name="maxValue"/> は 0 以上である必要があります。</param>
-		/// <returns>
-		/// 0 以上で <paramref name="maxValue"/> 未満の 32 ビット符号付き整数。
-		/// つまり、通常は戻り値の範囲に 0 は含まれますが、<paramref name="maxValue"/> は含まれません。
-		/// ただし、<paramref name="maxValue"/> が 0 の場合は、<paramref name="maxValue"/> が返されます。
-		/// </returns>
-		public override int Next(int maxValue) { return Next(0, maxValue); }
-
-		/// <summary>0 以上で <see cref="Int32.MaxValue"/> より小さい乱数を返します。</summary>
-		/// <returns>0 以上で <see cref="Int32.MaxValue"/> より小さい 32 ビット符号付整数。</returns>
-		public override int Next() { return Next(0, int.MaxValue); }
-
 		/// <summary>0.0 以上 1.0 未満の乱数を返します。</summary>
 		/// <returns>0.0 以上 1.0 未満の倍精度浮動小数点数。</returns>
-		public override double NextDouble() { return NextUInt32() / ((double)uint.MaxValue + 1); }
+		public double NextDouble() { return NextUInt32() / ((double)uint.MaxValue + 1); }
 
-		/// <summary>指定したバイト配列の要素に乱数を格納します。</summary>
-		/// <param name="buffer">乱数を格納するバイト配列を指定します。。</param>
-		public override void NextBytes(byte[] buffer)
-		{
-			uint sample = 0;
-			for (int i = 0; i < buffer.Length; i++)
-			{
-				if (i % 4 == 0)
-					sample = NextUInt32();
-				buffer[i] = (byte)(sample & 0xff);
-				sample >>= 8;
-			}
-		}
-
-		/// <summary>0.0 以上 1.0 未満の乱数を返します。</summary>
-		/// <returns>0.0 以上 1.0 未満の倍精度浮動小数点数。</returns>
-		protected override double Sample() { return NextDouble(); }
+		/// <summary>0.0 以上 1.0 以下の乱数を返します。</summary>
+		/// <returns>0.0 以上 1.0 以下の倍精度浮動小数点数。</returns>
+		public double NextDoubleFull() { return NextUInt32() / (double)uint.MaxValue; }
 	}
 }

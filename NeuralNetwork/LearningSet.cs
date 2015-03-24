@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace NeuralNetwork
 {
-	public class LearningSet
+	public sealed class LearningSet
 	{
 		public LearningSet(IEnumerable<Pattern> trainingData, IEnumerable<Pattern> testData, int row, int column, int classCount)
 		{
@@ -15,15 +15,15 @@ namespace NeuralNetwork
 			Column = column;
 			ClassCount = classCount;
 		}
-		public readonly IReadOnlyList<Pattern> TrainingData;
-		public readonly IReadOnlyList<Pattern> TestData;
+		public readonly Pattern[] TrainingData;
+		public readonly Pattern[] TestData;
 		public readonly int Row;
 		public readonly int Column;
 		public readonly int ClassCount;
 		public LearningSet Subset(int trainingDataCount, int testDataCount) { return new LearningSet(TrainingData.Take(trainingDataCount), TestData.Take(testDataCount), Row, Column, ClassCount); }
 	}
 
-	public class Pattern
+	public sealed class Pattern
 	{
 		public Pattern(int label, double[] image)
 		{
@@ -32,7 +32,6 @@ namespace NeuralNetwork
 		}
 		public readonly int Label;
 		public readonly double[] Image;
-		public override string ToString() { return "Image: " + Image + ", Label: " + Label; }
 	}
 
 	public static class MnistSet
