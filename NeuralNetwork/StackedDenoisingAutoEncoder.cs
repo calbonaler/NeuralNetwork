@@ -24,28 +24,17 @@ namespace NeuralNetwork
 			// ここでは最初に積層雑音除去自己符号化器を深い多層パーセプトロンとして構築し、それぞれのシグモイド層の構築時にその層と重みを共有する雑音除去自己符号化器も構築します。
 			// 事前学習では、(多層パーセプトロンの重みを更新することにもなる) これらの自己符号化器の訓練を行います。
 			// ファインチューニングでは、多層パーセプトロン上で確率的勾配降下法を実行することにより、積層雑音除去自己符号化器の訓練を完了させます。
-			_rng = rng;
-			_nextLayerInputUnits = nIn;
+			HiddenLayers = new HiddenLayerCollection(rng, nIn);
 		}
 
-		int _nextLayerInputUnits;
-		readonly MersenneTwister _rng;
 		LogisticRegressionLayer _outputLayer;
-		
-		public readonly List<HiddenLayer> HiddenLayers = new List<HiddenLayer>();
 
-		public void AddHiddenLayer(int neurons)
-		{
-			if (_nextLayerInputUnits < 0)
-				throw new InvalidOperationException("出力層の追加が完了した SDA に新しい隠れ層を追加することはできません。");
-			HiddenLayers.Add(new HiddenLayer(_rng, _nextLayerInputUnits, neurons, ActivationFunction.Sigmoid, HiddenLayers, HiddenLayers.Count));
-			_nextLayerInputUnits = neurons;
-		}
+		public readonly HiddenLayerCollection HiddenLayers;
 
 		public void SetLogisticRegressionLayer(int neurons)
 		{
 			_outputLayer = new LogisticRegressionLayer(HiddenLayers[HiddenLayers.Count - 1].Bias.Length, neurons);
-			_nextLayerInputUnits = -1;
+			HiddenLayers.Freeze();
 		}
 
 		/// <summary>指定されたデータセットに対してファインチューニングを実行します。</summary>

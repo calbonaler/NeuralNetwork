@@ -91,8 +91,7 @@ namespace NeuralNetwork
 		/// <param name="nOut">隠れ素子の数を指定します。</param>
 		/// <param name="activation">隠れ層に適用される活性化関数を指定します。</param>
 		/// <param name="hiddenLayers">この隠れ層が所属している Stacked Denoising Auto-Encoder のすべての隠れ層を表すリストを指定します。</param>
-		/// <param name="index">この隠れ層が所属している Stacked Denoising Auto-Encoder 内のこの隠れ層の位置を示すインデックスを指定します。</param>
-		public HiddenLayer(MersenneTwister rng, int nIn, int nOut, ActivationFunction activation, IReadOnlyList<HiddenLayer> hiddenLayers, int index) : base(nIn, nOut, activation.Normal)
+		public HiddenLayer(MersenneTwister rng, int nIn, int nOut, ActivationFunction activation, HiddenLayerCollection hiddenLayers) : base(nIn, nOut, activation.Normal)
 		{
 			// `W` is initialized with `W_values` which is uniformely sampled from sqrt(-6./(n_in+n_hidden)) and sqrt(6./(n_in+n_hidden)) for tanh activation function
 			// the output of uniform if converted using asarray to dtype theano.config.floatX so that the code is runable on GPU
@@ -113,13 +112,11 @@ namespace NeuralNetwork
 			_rng = rng;
 			_visibleBias = new double[Weight.GetLength(1)];
 			_hiddenLayers = hiddenLayers;
-			_index = index;
 		}
 
 		readonly Func<double, double> _differentiatedActivation;
 		// 以下、DAとして使用するための変数
-		readonly IReadOnlyList<HiddenLayer> _hiddenLayers;
-		readonly int _index;
+		readonly HiddenLayerCollection _hiddenLayers;
 		readonly MersenneTwister _rng;
 		readonly double[] _visibleBias;
 
@@ -132,8 +129,8 @@ namespace NeuralNetwork
 		/// <summary>この層から雑音除去自己符号化器を構成し、指定されたデータセットを使用して訓練した結果のコストを返します。</summary>
 		/// <param name="dataset">訓練に使用するデータセットを指定します。</param>
 		/// <param name="learningRate">学習率を指定します。</param>
-		/// <param name="noise">この雑音除去自己符号化器の入力を生成する際のデータの欠損率を指定します。</param>
-		/// <returns>訓練後のこの雑音除去自己符号化器の入力に対するコスト。</returns>
+		/// <param name="noise">構成された雑音除去自己符号化器の入力を生成する際のデータの欠損率を指定します。</param>
+		/// <returns>構成された雑音除去自己符号化器の入力に対するコスト。</returns>
 		public double Train(Pattern[] dataset, double learningRate, double noise)
 		{
 			var latent = new double[Bias.Length];
@@ -142,13 +139,11 @@ namespace NeuralNetwork
 			double cost = 0;
 			for (int n = 0; n < dataset.Length; n++)
 			{
-				var image = dataset[n].Image;
-				for (int l = 0; l < _index; l++)
-					image = _hiddenLayers[l].Compute(image);
-
+				var image = _hiddenLayers.Compute(dataset[n].Image, this);
 				var corrupted = image.Select(x => _rng.NextDouble() < noise ? 0 : x).ToArray();
 				ActivationFunction.Sigmoid.Normal(j => corrupted.Select((y, i) => y * Weight[j, i]).Sum() + Bias[j], latent);
 				ActivationFunction.Sigmoid.Normal(j => latent.Select((y, i) => y * Weight[i, j]).Sum() + _visibleBias[j], reconstructed);
+				cost += ErrorFunction.BiClassCrossEntropy(image, reconstructed);
 				Parallel.For(0, Weight.GetLength(0), i =>
 				{
 					delta[i] = 0;
@@ -163,10 +158,76 @@ namespace NeuralNetwork
 						Weight[i, j] -= learningRate * ((reconstructed[j] - image[j]) * latent[i] + delta[i] * corrupted[j]);
 					_visibleBias[j] -= learningRate * (reconstructed[j] - image[j]);
 				});
+			}
+			return cost / dataset.Length;
+		}
+
+		/// <summary>この層から雑音除去自己符号化器を構成し、指定されたデータセットのコストを計算します。</summary>
+		/// <param name="dataset">コストを計算するデータセットを指定します。</param>
+		/// <param name="noise">構成された雑音除去自己符号化器の入力を生成する際のデータの欠損率を指定します。</param>
+		/// <returns>構成された雑音除去自己符号化器の入力に対するコスト。</returns>
+		public double ComputeCost(Pattern[] dataset, double noise)
+		{
+			var latent = new double[Bias.Length];
+			var reconstructed = new double[_visibleBias.Length];
+			double cost = 0;
+			for (int n = 0; n < dataset.Length; n++)
+			{
+				var image = _hiddenLayers.Compute(dataset[n].Image, this);
+				var corrupted = image.Select(x => _rng.NextDouble() < noise ? 0 : x).ToArray();
+				ActivationFunction.Sigmoid.Normal(j => corrupted.Select((y, i) => y * Weight[j, i]).Sum() + Bias[j], latent);
+				ActivationFunction.Sigmoid.Normal(j => latent.Select((y, i) => y * Weight[i, j]).Sum() + _visibleBias[j], reconstructed);
 				cost += ErrorFunction.BiClassCrossEntropy(image, reconstructed);
 			}
 			return cost / dataset.Length;
 		}
+	}
+
+	public sealed class HiddenLayerCollection : IReadOnlyList<HiddenLayer>
+	{
+		public HiddenLayerCollection(MersenneTwister rng, int nIn)
+		{
+			_rng = rng;
+			_nextLayerInputUnits = nIn;
+		}
+
+		readonly MersenneTwister _rng;
+		int _nextLayerInputUnits;
+		List<HiddenLayer> _items = new List<HiddenLayer>();
+
+		public double[] Compute(double[] input, HiddenLayer stopLayer)
+		{
+			for (int i = 0; i < _items.Count && _items[i] != stopLayer; i++)
+				input = _items[i].Compute(input);
+			return input;
+		}
+
+		public void Set(int index, int neurons)
+		{
+			if (_nextLayerInputUnits < 0)
+				throw new InvalidOperationException("固定されたコレクションの隠れ層を設定することはできません。");
+			if (index > _items.Count)
+				throw new ArgumentOutOfRangeException("index");
+			if (index == _items.Count)
+			{
+				_items.Add(new HiddenLayer(_rng, _nextLayerInputUnits, neurons, ActivationFunction.Sigmoid, this));
+				_nextLayerInputUnits = neurons;
+				return;
+			}
+			_items[index] = new HiddenLayer(_rng, _items[index].Weight.GetLength(1), neurons, ActivationFunction.Sigmoid, this);
+			if (index < _items.Count - 1)
+				_items[index + 1] = new HiddenLayer(_rng, neurons, _items[index + 1].Weight.GetLength(0), ActivationFunction.Sigmoid, this);
+		}
+
+		public void Freeze() { _nextLayerInputUnits = -1; }
+
+		public HiddenLayer this[int index] { get { return _items[index]; } }
+
+		public int Count { get { return _items.Count; } }
+
+		public IEnumerator<HiddenLayer> GetEnumerator() { return _items.GetEnumerator(); }
+
+		System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() { return GetEnumerator(); }
 	}
 
 	/// <summary>
