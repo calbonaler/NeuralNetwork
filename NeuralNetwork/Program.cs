@@ -18,7 +18,7 @@ namespace NeuralNetwork
 
 		static void TestSdA(LearningSet datasets)
 		{
-			var sda = new StackedDenoisingAutoEncoder(new MersenneTwister(89677), datasets.Row * datasets.Column);
+			var sda = new StackedDenoisingAutoEncoder(89677, datasets.Row * datasets.Column);
 
 			using (StreamWriter writer = new StreamWriter("Experiments (Variable Neurons).txt"))
 			{

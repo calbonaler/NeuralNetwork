@@ -85,13 +85,12 @@ namespace NeuralNetwork
 	/// </remarks>
 	public sealed class HiddenLayer : Layer
 	{
-		/// <summary><see cref="HiddenLayer"/> クラスを乱数生成器、入出力の次元数、活性化関数および下層を使用して初期化します。</summary>
-		/// <param name="rng">重みの初期化に使用される乱数生成器を指定します。</param>
+		/// <summary><see cref="HiddenLayer"/> クラスを入出力の次元数、活性化関数および下層を使用して初期化します。</summary>
 		/// <param name="nIn">入力の次元数を指定します。</param>
 		/// <param name="nOut">隠れ素子の数を指定します。</param>
 		/// <param name="activation">隠れ層に適用される活性化関数を指定します。</param>
 		/// <param name="hiddenLayers">この隠れ層が所属している Stacked Denoising Auto-Encoder のすべての隠れ層を表すリストを指定します。</param>
-		public HiddenLayer(MersenneTwister rng, int nIn, int nOut, ActivationFunction activation, HiddenLayerCollection hiddenLayers) : base(nIn, nOut, activation.Normal)
+		public HiddenLayer(int nIn, int nOut, ActivationFunction activation, HiddenLayerCollection hiddenLayers) : base(nIn, nOut, activation.Normal)
 		{
 			// `W` is initialized with `W_values` which is uniformely sampled from sqrt(-6./(n_in+n_hidden)) and sqrt(6./(n_in+n_hidden)) for tanh activation function
 			// the output of uniform if converted using asarray to dtype theano.config.floatX so that the code is runable on GPU
@@ -102,14 +101,13 @@ namespace NeuralNetwork
 			{
 				for (int i = 0; i < nIn; i++)
 				{
-					Weight[j, i] = (2 * rng.NextDoubleFull() - 1) * Math.Sqrt(6.0 / (nIn + nOut));
+					Weight[j, i] = (2 * hiddenLayers.RandomNumberGenerator.NextDoubleFull() - 1) * Math.Sqrt(6.0 / (nIn + nOut));
 					if (activation == ActivationFunction.Sigmoid)
 						Weight[j, i] *= 4;
 				}
 			}
 			_differentiatedActivation = activation.Differentiated;
 
-			_rng = rng;
 			_visibleBias = new double[Weight.GetLength(1)];
 			_hiddenLayers = hiddenLayers;
 		}
@@ -117,7 +115,6 @@ namespace NeuralNetwork
 		readonly Func<double, double> _differentiatedActivation;
 		// 以下、DAとして使用するための変数
 		readonly HiddenLayerCollection _hiddenLayers;
-		readonly MersenneTwister _rng;
 		readonly double[] _visibleBias;
 
 		/// <summary>この層の線形計算の結果に対するニューラルネットワークのコストの勾配ベクトル (Delta) の要素を計算します。</summary>
@@ -140,7 +137,7 @@ namespace NeuralNetwork
 			for (int n = 0; n < dataset.Length; n++)
 			{
 				var image = _hiddenLayers.Compute(dataset[n].Image, this);
-				var corrupted = image.Select(x => _rng.NextDouble() < noise ? 0 : x).ToArray();
+				var corrupted = image.Select(x => _hiddenLayers.RandomNumberGenerator.NextDouble() < noise ? 0 : x).ToArray();
 				ActivationFunction.Sigmoid.Normal(j => corrupted.Select((y, i) => y * Weight[j, i]).Sum() + Bias[j], latent);
 				ActivationFunction.Sigmoid.Normal(j => latent.Select((y, i) => y * Weight[i, j]).Sum() + _visibleBias[j], reconstructed);
 				cost += ErrorFunction.BiClassCrossEntropy(image, reconstructed);
@@ -174,7 +171,7 @@ namespace NeuralNetwork
 			for (int n = 0; n < dataset.Length; n++)
 			{
 				var image = _hiddenLayers.Compute(dataset[n].Image, this);
-				var corrupted = image.Select(x => _rng.NextDouble() < noise ? 0 : x).ToArray();
+				var corrupted = image.Select(x => _hiddenLayers.RandomNumberGenerator.NextDouble() < noise ? 0 : x).ToArray();
 				ActivationFunction.Sigmoid.Normal(j => corrupted.Select((y, i) => y * Weight[j, i]).Sum() + Bias[j], latent);
 				ActivationFunction.Sigmoid.Normal(j => latent.Select((y, i) => y * Weight[i, j]).Sum() + _visibleBias[j], reconstructed);
 				cost += ErrorFunction.BiClassCrossEntropy(image, reconstructed);
@@ -185,15 +182,16 @@ namespace NeuralNetwork
 
 	public sealed class HiddenLayerCollection : IReadOnlyList<HiddenLayer>
 	{
-		public HiddenLayerCollection(MersenneTwister rng, int nIn)
+		public HiddenLayerCollection(int rngSeed, int nIn)
 		{
-			_rng = rng;
+			RandomNumberGenerator = new MersenneTwister(rngSeed);
 			_nextLayerInputUnits = nIn;
 		}
 
-		readonly MersenneTwister _rng;
 		int _nextLayerInputUnits;
 		List<HiddenLayer> _items = new List<HiddenLayer>();
+		
+		public readonly MersenneTwister RandomNumberGenerator;
 
 		public double[] Compute(double[] input, HiddenLayer stopLayer)
 		{
@@ -210,13 +208,13 @@ namespace NeuralNetwork
 				throw new ArgumentOutOfRangeException("index");
 			if (index == _items.Count)
 			{
-				_items.Add(new HiddenLayer(_rng, _nextLayerInputUnits, neurons, ActivationFunction.Sigmoid, this));
+				_items.Add(new HiddenLayer(_nextLayerInputUnits, neurons, ActivationFunction.Sigmoid, this));
 				_nextLayerInputUnits = neurons;
 				return;
 			}
-			_items[index] = new HiddenLayer(_rng, _items[index].Weight.GetLength(1), neurons, ActivationFunction.Sigmoid, this);
+			_items[index] = new HiddenLayer(_items[index].Weight.GetLength(1), neurons, ActivationFunction.Sigmoid, this);
 			if (index < _items.Count - 1)
-				_items[index + 1] = new HiddenLayer(_rng, neurons, _items[index + 1].Weight.GetLength(0), ActivationFunction.Sigmoid, this);
+				_items[index + 1] = new HiddenLayer(neurons, _items[index + 1].Weight.GetLength(0), ActivationFunction.Sigmoid, this);
 		}
 
 		public void Freeze() { _nextLayerInputUnits = -1; }

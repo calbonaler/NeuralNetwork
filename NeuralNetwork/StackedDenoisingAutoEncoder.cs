@@ -15,16 +15,16 @@ namespace NeuralNetwork
 	/// </summary>
 	public sealed class StackedDenoisingAutoEncoder
 	{
-		/// <summary><see cref="StackedDenoisingAutoEncoder"/> クラスを乱数生成器と入力次元数を使用して初期化します。</summary>
-		/// <param name="rng">重みの初期化と雑音除去自己符号化器の雑音生成に使用される乱数生成器を指定します。</param>
+		/// <summary><see cref="StackedDenoisingAutoEncoder"/> クラスを乱数生成器のシード値と入力次元数を使用して初期化します。</summary>
+		/// <param name="rng">重みの初期化と雑音除去自己符号化器の雑音生成に使用される乱数生成器のシード値を指定します。</param>
 		/// <param name="nIn">このネットワークの入力次元数を指定します。</param>
-		public StackedDenoisingAutoEncoder(MersenneTwister rng, int nIn)
+		public StackedDenoisingAutoEncoder(int rngSeed, int nIn)
 		{
 			// 積層雑音除去自己符号化器は多層パーセプトロンで、これはすべての中間層の重みが別の雑音除去自己符号化器と共有されています。
 			// ここでは最初に積層雑音除去自己符号化器を深い多層パーセプトロンとして構築し、それぞれのシグモイド層の構築時にその層と重みを共有する雑音除去自己符号化器も構築します。
 			// 事前学習では、(多層パーセプトロンの重みを更新することにもなる) これらの自己符号化器の訓練を行います。
 			// ファインチューニングでは、多層パーセプトロン上で確率的勾配降下法を実行することにより、積層雑音除去自己符号化器の訓練を完了させます。
-			HiddenLayers = new HiddenLayerCollection(rng, nIn);
+			HiddenLayers = new HiddenLayerCollection(rngSeed, nIn);
 		}
 
 		LogisticRegressionLayer _outputLayer;
