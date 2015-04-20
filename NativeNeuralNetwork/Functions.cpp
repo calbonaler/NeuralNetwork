@@ -32,7 +32,7 @@ double ErrorFunction::BiClassCrossEntropy(const double* source, const double* ta
 {
 	double sum = 0;
 	for (unsigned int i = 0; i < length; i++)
-		sum += target[i] * log(source[i] + 1e-10) + (1 - target[i]) * log(1 - source[i] + 1e-10);
+		sum -= target[i] * log(source[i] + 1e-10) + (1 - target[i]) * log(1 - source[i] + 1e-10);
 	return sum;
 }
 
@@ -40,7 +40,7 @@ double ErrorFunction::MultiClassCrossEntropy(const double* source, const double*
 {
 	double sum = 0;
 	for (unsigned int i = 0; i < length; i++)
-		sum += target[i] * log(source[i] + 1e-10);
+		sum -= target[i] * log(source[i] + 1e-10);
 	return sum;
 }
 
