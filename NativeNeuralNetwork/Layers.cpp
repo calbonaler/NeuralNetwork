@@ -16,26 +16,25 @@ Layer::~Layer()
 	delete[] Bias;
 }
 
-double* Layer::Compute(const double* input) const
+std::unique_ptr<double[]> Layer::Compute(const double* input) const
 {
 	assert(input);
-	double* output = new double[nOut];
+	std::unique_ptr<double[]> output = std::make_unique<double[]>(nOut);
 	activation([&](unsigned int j)
 	{
 		double ret = 0;
 		for (unsigned int k = 0; k < nIn; k++)
 			ret += input[k] * Weight[j][k];
 		return ret + Bias[j];
-	}, output, nOut);
+	}, output.get(), nOut);
 	return output;
 }
 
-double* Layer::Learn(const double* input, const double* output, Indexer upperInfo, double learningRate)
+std::unique_ptr<double[]> Layer::Learn(const double* input, const double* output, Indexer upperInfo, double learningRate)
 {
 	assert(input);
 	assert(output);
-	double* lowerInfo = new double[nIn]();
-	// TODO: Check initialized
+	std::unique_ptr<double[]> lowerInfo = std::make_unique<double[]>(nIn);
 	for (unsigned int i = 0; i < nOut; i++)
 	{
 		auto deltaI = GetDelta(output[i], upperInfo(i));
@@ -82,7 +81,7 @@ double HiddenLayer::Train(const DataSet& dataset, double learningRate, double no
 	{
 		auto image = hiddenLayers->Compute(dataset.Images()[n], this);
 		for (unsigned int i = 0; i < nIn; i++)
-			corrupted[i] = dist(hiddenLayers->RandomNumberGenerator) < noise ? 0 : image[i];
+			corrupted[i] = dist(hiddenLayers->RandomNumberGenerator) < noise ? 0 : ((const double*)image.get())[i];
 		ActivationFunction::Sigmoid()->Normal([&](int j)
 		{
 			double ret = 0;
@@ -97,23 +96,21 @@ double HiddenLayer::Train(const DataSet& dataset, double learningRate, double no
 				ret += latent[i] * Weight[i][j];
 			return ret + visibleBias[j];
 		}, reconstructed.get(), nIn);
-		cost += ErrorFunction::BiClassCrossEntropy(image, reconstructed.get(), nIn);
+		cost += ErrorFunction::BiClassCrossEntropy((const double*)image.get(), reconstructed.get(), nIn);
 		for (unsigned int i = 0; i < nOut; i++)
 		{
 			delta[i] = 0;
 			for (unsigned int j = 0; j < nIn; j++)
-				delta[i] += (reconstructed[j] - image[j]) * Weight[i][j];
+				delta[i] += (reconstructed[j] - ((const double*)image.get())[j]) * Weight[i][j];
 			delta[i] *= ActivationFunction::Sigmoid()->Differentiated(latent[i]);
 			Bias[i] -= learningRate * delta[i];
 		};
 		for (unsigned int j = 0; j < nIn; j++)
 		{
 			for (unsigned int i = 0; i < nOut; i++)
-				Weight[i][j] -= learningRate * ((reconstructed[j] - image[j]) * latent[i] + delta[i] * corrupted[j]);
-			visibleBias[j] -= learningRate * (reconstructed[j] - image[j]);
+				Weight[i][j] -= learningRate * ((reconstructed[j] - ((const double*)image.get())[j]) * latent[i] + delta[i] * corrupted[j]);
+			visibleBias[j] -= learningRate * (reconstructed[j] - ((const double*)image.get())[j]);
 		};
-		if (image != dataset.Images()[n])
-			delete[] image;
 	}
 	return cost / dataset.Count();
 }
@@ -129,7 +126,7 @@ double HiddenLayer::ComputeCost(const DataSet& dataset, double noise) const
 	{
 		auto image = hiddenLayers->Compute(dataset.Images()[n], this);
 		for (unsigned int i = 0; i < nIn; i++)
-			corrupted[i] = dist(hiddenLayers->RandomNumberGenerator) < noise ? 0 : image[i];
+			corrupted[i] = dist(hiddenLayers->RandomNumberGenerator) < noise ? 0 : ((const double*)image.get())[i];
 		ActivationFunction::Sigmoid()->Normal([&](int j)
 		{
 			double ret = 0;
@@ -144,23 +141,20 @@ double HiddenLayer::ComputeCost(const DataSet& dataset, double noise) const
 				ret += latent[i] * Weight[i][j];
 			return ret + visibleBias[j];
 		}, reconstructed.get(), nIn);
-		cost += ErrorFunction::BiClassCrossEntropy(image, reconstructed.get(), nIn);
-		if (image != dataset.Images()[n])
-			delete[] image;
+		cost += ErrorFunction::BiClassCrossEntropy((const double*)image.get(), reconstructed.get(), nIn);
 	}
 	return cost / dataset.Count();
 }
 
-const double* HiddenLayerCollection::Compute(const double* input, const HiddenLayer* stopLayer) const
+unique_or_raw_array<double> HiddenLayerCollection::Compute(const double* input, const HiddenLayer* stopLayer) const
 {
+	unique_or_raw_array<double> result(input);
 	for (unsigned int i = 0; i < items.size() && items[i].get() != stopLayer; i++)
 	{
-		auto newInput = items[i]->Compute(input);
-		if (i > 0)
-			delete[] input;
-		input = newInput;
+		result = items[i]->Compute(input);
+		input = (const double*)result.get();
 	}
-	return input;
+	return std::move(result);
 }
 
 void HiddenLayerCollection::Set(unsigned int index, unsigned int neurons)

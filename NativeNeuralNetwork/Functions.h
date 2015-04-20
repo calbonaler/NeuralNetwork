@@ -1,9 +1,6 @@
 #pragma once
 
-#include <functional>
 #include "Utility.h"
-
-typedef std::function<double(unsigned int)> Indexer;
 
 class ActivationFunction : private Noncopyable
 {
