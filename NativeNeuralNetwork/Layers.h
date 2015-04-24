@@ -5,9 +5,11 @@
 #include <random>
 
 /// <summary>ニューラルネットワークの層を表す抽象クラスです。</summary>
-class Layer : private Noncopyable
+class Layer
 {
 public:
+	FORCE_UNCOPYABLE(Layer);
+
 	/// <summary>この層を破棄します。</summary>
 	virtual ~Layer();
 
@@ -72,6 +74,8 @@ class HiddenLayerCollection;
 class HiddenLayer : public Layer
 {
 public:
+	FORCE_UNCOPYABLE(HiddenLayer);
+
 	/// <summary><see cref="HiddenLayer"/> クラスを入出力の次元数、活性化関数および下層を使用して初期化します。</summary>
 	/// <param name="nIn">入力の次元数を指定します。</param>
 	/// <param name="nOut">隠れ素子の数を指定します。</param>
@@ -109,9 +113,11 @@ private:
 };
 
 /// <summary>隠れ層のコレクションを表します。</summary>
-class HiddenLayerCollection : private Noncopyable
+class HiddenLayerCollection
 {
 public:
+	FORCE_UNCOPYABLE(HiddenLayerCollection);
+
 	/// <summary>乱数生成器のシード値と入力層のユニット数を指定して、<see cref="HiddenLayerCollection"/> クラスの新しいインスタンスを初期化します。</summary>
 	/// <param name="rngSeed">隠れ層の計算に使用される乱数生成器のシード値を指定します。</param>
 	/// <param name="nIn">入力層のユニット数を指定します。</param>
@@ -137,11 +143,11 @@ public:
 	/// <summary>このコレクション内の指定されたインデックスにある隠れ層への参照を取得します。</summary>
 	/// <param name="index">隠れ層を取得するインデックスを指定します。</param>
 	/// <returns>取得された隠れ層への参照。これは変更可能な参照です。</returns>
-	HiddenLayer& operator[](unsigned int index) { return *items[index]; }
+	HiddenLayer& operator[](size_t index) { return *items[index]; }
 
 	/// <summary>このコレクション内に含まれている隠れ層の個数を指定します。</summary>
 	/// <returns>コレクションに含まれている隠れ層の個数。</returns>
-	unsigned int Count() const { return items.size(); }
+	size_t Count() const { return items.size(); }
 
 private:
 	bool frozen;
@@ -157,6 +163,8 @@ private:
 class LogisticRegressionLayer : public Layer
 {
 public:
+	FORCE_UNCOPYABLE(LogisticRegressionLayer);
+
 	/// <summary>ロジスティック回帰のパラメータを初期化します。</summary>
 	/// <param name="nIn">入力素子の数 (データ点が存在する空間の次元) を指定します。</param>
 	/// <param name="nOut">出力素子の数 (ラベルが存在する空間の次元) を指定します。</param>

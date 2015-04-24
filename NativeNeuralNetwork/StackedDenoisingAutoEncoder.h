@@ -10,9 +10,11 @@
 /// 最初の層の雑音除去自己符号化器は入力として積層雑音除去自己符号化器の入力を受け取り、最後の層の雑音除去自己符号化器の隠れ層は出力を表します。
 /// 注釈: 事前学習後、積層雑音除去自己符号化器は通常の多層パーセプトロンとして扱われます。雑音除去自己符号化器は重みの初期化にのみ使用されます。
 /// </summary>
-class StackedDenoisingAutoEncoder : private Noncopyable
+class StackedDenoisingAutoEncoder
 {
 public:
+	FORCE_UNCOPYABLE(StackedDenoisingAutoEncoder);
+
 	/// <summary><see cref="StackedDenoisingAutoEncoder"/> クラスを乱数生成器のシード値と入力次元数を使用して初期化します。</summary>
 	/// <param name="rng">重みの初期化と雑音除去自己符号化器の雑音生成に使用される乱数生成器のシード値を指定します。</param>
 	/// <param name="nIn">このネットワークの入力次元数を指定します。</param>

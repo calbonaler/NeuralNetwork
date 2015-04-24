@@ -2,11 +2,13 @@
 
 #include "Utility.h"
 
-class ActivationFunction : private Noncopyable
+class ActivationFunction
 {
 public:
 	typedef std::function<void(const Indexer&, double*, unsigned int)> NormalForm;
 	typedef std::function<double(double)> DifferentiatedForm;
+
+	FORCE_UNCOPYABLE(ActivationFunction);
 
 	const NormalForm Normal;
 	const DifferentiatedForm Differentiated;
