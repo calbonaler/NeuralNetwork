@@ -98,7 +98,7 @@ void LoadMnistSetInternal(DataSet& dataset, const std::string& fileName)
 	{
 		dataset.Labels()[i] = ReadByte(labelFile);
 		for (uint32_t j = 0; j < imageLength; j++)
-			dataset.Images()[i][j] = static_cast<double>(ReadByte(imageFile)) / UCHAR_MAX;
+			dataset.Images()[i][j] = static_cast<double>(ReadByte(imageFile)) / std::numeric_limits<unsigned char>::max();
 	}
 }
 
