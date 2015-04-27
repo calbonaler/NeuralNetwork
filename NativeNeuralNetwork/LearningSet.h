@@ -3,73 +3,73 @@
 #include <string>
 #include "Utility.h"
 
-/// <summary>ŠwK‚¨‚æ‚Ñ¯•Ê‚Ég—p‚³‚ê‚éƒf[ƒ^ƒZƒbƒg‚ğ•\‚µ‚Ü‚·B</summary>
+/// <summary>å­¦ç¿’ãŠã‚ˆã³è­˜åˆ¥ã«ä½¿ç”¨ã•ã‚Œã‚‹ãƒ‡ãƒ¼ã‚¿ã‚»ãƒƒãƒˆã‚’è¡¨ã—ã¾ã™ã€‚</summary>
 class DataSet
 {
 public:
-	/// <summary><see cref="DataSet"/> ƒNƒ‰ƒX‚ÌV‚µ‚¢ƒCƒ“ƒXƒ^ƒ“ƒX‚ğ‰Šú‰»‚µ‚Ü‚·B</summary>
+	/// <summary><see cref="DataSet"/> ã‚¯ãƒ©ã‚¹ã®æ–°ã—ã„ã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹ã‚’åˆæœŸåŒ–ã—ã¾ã™ã€‚</summary>
 	DataSet() : labels(nullptr), images(nullptr), count(0), row(0), column(0) { }
 
-	/// <summary>w’è‚³‚ê‚½ƒf[ƒ^ƒZƒbƒg‚Ìƒf[ƒ^‚ğƒRƒs[‚µ‚ÄA<see cref="DataSet"/> ƒNƒ‰ƒX‚ÌV‚µ‚¢ƒCƒ“ƒXƒ^ƒ“ƒX‚ğ‰Šú‰»‚µ‚Ü‚·B</summary>
-	/// <param name="dataset">ƒRƒs[Œ³‚Ìƒf[ƒ^ƒZƒbƒg‚ğw’è‚µ‚Ü‚·B</param>
+	/// <summary>æŒ‡å®šã•ã‚ŒãŸãƒ‡ãƒ¼ã‚¿ã‚»ãƒƒãƒˆã®ãƒ‡ãƒ¼ã‚¿ã‚’ã‚³ãƒ”ãƒ¼ã—ã¦ã€<see cref="DataSet"/> ã‚¯ãƒ©ã‚¹ã®æ–°ã—ã„ã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹ã‚’åˆæœŸåŒ–ã—ã¾ã™ã€‚</summary>
+	/// <param name="dataset">ã‚³ãƒ”ãƒ¼å…ƒã®ãƒ‡ãƒ¼ã‚¿ã‚»ãƒƒãƒˆã‚’æŒ‡å®šã—ã¾ã™ã€‚</param>
 	DataSet(const DataSet& dataset) : labels(nullptr), images(nullptr), count(0), row(0), column(0) { CopyFrom(dataset, dataset.count); }
 
-	/// <summary>w’è‚³‚ê‚½ƒf[ƒ^ƒZƒbƒg‚Ìƒf[ƒ^‚ğˆÚ“®‚µ‚ÄA<see cref="DataSet"/> ƒNƒ‰ƒX‚ÌV‚µ‚¢ƒCƒ“ƒXƒ^ƒ“ƒX‚ğ‰Šú‰»‚µ‚Ü‚·B</summary>
-	/// <param name="dataset">ˆÚ“®Œ³‚Ìƒf[ƒ^ƒZƒbƒg‚ğw’è‚µ‚Ü‚·B</param>
+	/// <summary>æŒ‡å®šã•ã‚ŒãŸãƒ‡ãƒ¼ã‚¿ã‚»ãƒƒãƒˆã®ãƒ‡ãƒ¼ã‚¿ã‚’ç§»å‹•ã—ã¦ã€<see cref="DataSet"/> ã‚¯ãƒ©ã‚¹ã®æ–°ã—ã„ã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹ã‚’åˆæœŸåŒ–ã—ã¾ã™ã€‚</summary>
+	/// <param name="dataset">ç§»å‹•å…ƒã®ãƒ‡ãƒ¼ã‚¿ã‚»ãƒƒãƒˆã‚’æŒ‡å®šã—ã¾ã™ã€‚</param>
 	DataSet(DataSet&& dataset) : labels(nullptr), images(nullptr), count(0), row(0), column(0) { *this = std::move(dataset); }
 
-	/// <summary>w’è‚³‚ê‚½ƒf[ƒ^ƒZƒbƒg‚Ìƒf[ƒ^‚Ìˆê•”‚ğg—p‚µ‚ÄA<see cref="DataSet"/> ƒNƒ‰ƒX‚ÌV‚µ‚¢ƒCƒ“ƒXƒ^ƒ“ƒX‚ğ‰Šú‰»‚µ‚Ü‚·B</summary>
-	/// <param name="dataset">Šî‚É‚È‚éƒf[ƒ^ƒZƒbƒg‚ğw’è‚µ‚Ü‚·B</param>
-	/// <param name="count"><paramref name="dataset"/> ‚©‚ç‚±‚Ìƒf[ƒ^ƒZƒbƒg‚ÉƒRƒs[‚³‚ê‚éƒf[ƒ^”‚ğw’è‚µ‚Ü‚·Bƒf[ƒ^‚Íæ“ª‚©‚çƒRƒs[‚³‚ê‚Ü‚·B</param>
+	/// <summary>æŒ‡å®šã•ã‚ŒãŸãƒ‡ãƒ¼ã‚¿ã‚»ãƒƒãƒˆã®ãƒ‡ãƒ¼ã‚¿ã®ä¸€éƒ¨ã‚’ä½¿ç”¨ã—ã¦ã€<see cref="DataSet"/> ã‚¯ãƒ©ã‚¹ã®æ–°ã—ã„ã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹ã‚’åˆæœŸåŒ–ã—ã¾ã™ã€‚</summary>
+	/// <param name="dataset">åŸºã«ãªã‚‹ãƒ‡ãƒ¼ã‚¿ã‚»ãƒƒãƒˆã‚’æŒ‡å®šã—ã¾ã™ã€‚</param>
+	/// <param name="count"><paramref name="dataset"/> ã‹ã‚‰ã“ã®ãƒ‡ãƒ¼ã‚¿ã‚»ãƒƒãƒˆã«ã‚³ãƒ”ãƒ¼ã•ã‚Œã‚‹ãƒ‡ãƒ¼ã‚¿æ•°ã‚’æŒ‡å®šã—ã¾ã™ã€‚ãƒ‡ãƒ¼ã‚¿ã¯å…ˆé ­ã‹ã‚‰ã‚³ãƒ”ãƒ¼ã•ã‚Œã¾ã™ã€‚</param>
 	DataSet(const DataSet& dataset, unsigned int count) : labels(nullptr), images(nullptr), count(0), row(0), column(0) { CopyFrom(dataset, count); }
 
-	/// <summary>‚±‚Ìƒf[ƒ^ƒZƒbƒg‚ğ”jŠü‚µ‚Ü‚·B</summary>
+	/// <summary>ã“ã®ãƒ‡ãƒ¼ã‚¿ã‚»ãƒƒãƒˆã‚’ç ´æ£„ã—ã¾ã™ã€‚</summary>
 	~DataSet() { Deallocate(); }
 
-	/// <summary>w’è‚³‚ê‚½ƒf[ƒ^ƒZƒbƒg‚©‚ç‚±‚Ìƒf[ƒ^ƒZƒbƒg‚Éƒf[ƒ^‚ğƒRƒs[‚µ‚Ü‚·B</summary>
-	/// <param name="dataset">ƒf[ƒ^‚ÌƒRƒs[Œ³‚Ìƒf[ƒ^ƒZƒbƒg‚ğw’è‚µ‚Ü‚·B</param>
-	/// <returns>‚±‚Ìƒf[ƒ^ƒZƒbƒg‚Ö‚ÌQÆB</returns>
+	/// <summary>æŒ‡å®šã•ã‚ŒãŸãƒ‡ãƒ¼ã‚¿ã‚»ãƒƒãƒˆã‹ã‚‰ã“ã®ãƒ‡ãƒ¼ã‚¿ã‚»ãƒƒãƒˆã«ãƒ‡ãƒ¼ã‚¿ã‚’ã‚³ãƒ”ãƒ¼ã—ã¾ã™ã€‚</summary>
+	/// <param name="dataset">ãƒ‡ãƒ¼ã‚¿ã®ã‚³ãƒ”ãƒ¼å…ƒã®ãƒ‡ãƒ¼ã‚¿ã‚»ãƒƒãƒˆã‚’æŒ‡å®šã—ã¾ã™ã€‚</param>
+	/// <returns>ã“ã®ãƒ‡ãƒ¼ã‚¿ã‚»ãƒƒãƒˆã¸ã®å‚ç…§ã€‚</returns>
 	DataSet& operator=(const DataSet& dataset)
 	{
 		CopyFrom(dataset, dataset.count);
 		return *this;
 	}
 
-	/// <summary>w’è‚³‚ê‚½ƒf[ƒ^ƒZƒbƒg‚©‚ç‚±‚Ìƒf[ƒ^ƒZƒbƒg‚Éƒf[ƒ^‚ğˆÚ“®‚µ‚Ü‚·B</summary>
-	/// <param name="dataset">ƒf[ƒ^‚ÌˆÚ“®Œ³‚Ìƒf[ƒ^ƒZƒbƒg‚ğw’è‚µ‚Ü‚·B</param>
-	/// <returns>‚±‚Ìƒf[ƒ^ƒZƒbƒg‚Ö‚ÌQÆB</returns>
+	/// <summary>æŒ‡å®šã•ã‚ŒãŸãƒ‡ãƒ¼ã‚¿ã‚»ãƒƒãƒˆã‹ã‚‰ã“ã®ãƒ‡ãƒ¼ã‚¿ã‚»ãƒƒãƒˆã«ãƒ‡ãƒ¼ã‚¿ã‚’ç§»å‹•ã—ã¾ã™ã€‚</summary>
+	/// <param name="dataset">ãƒ‡ãƒ¼ã‚¿ã®ç§»å‹•å…ƒã®ãƒ‡ãƒ¼ã‚¿ã‚»ãƒƒãƒˆã‚’æŒ‡å®šã—ã¾ã™ã€‚</param>
+	/// <returns>ã“ã®ãƒ‡ãƒ¼ã‚¿ã‚»ãƒƒãƒˆã¸ã®å‚ç…§ã€‚</returns>
 	DataSet& operator=(DataSet&& dataset);
 
-	/// <summary>w’è‚³‚ê‚½ƒf[ƒ^ƒZƒbƒg‚Ìˆê•”‚ğ‚±‚Ìƒf[ƒ^ƒZƒbƒg‚ÉƒRƒs[‚µ‚Ü‚·B</summary>
-	/// <param name="dataset">Šî‚É‚È‚éƒf[ƒ^ƒZƒbƒg‚ğw’è‚µ‚Ü‚·B</param>
-	/// <param name="count"><paramref name="dataset"/> ‚©‚ç‚±‚Ìƒf[ƒ^ƒZƒbƒg‚ÉƒRƒs[‚³‚ê‚éƒf[ƒ^”‚ğw’è‚µ‚Ü‚·Bƒf[ƒ^‚Íæ“ª‚©‚çƒRƒs[‚³‚ê‚Ü‚·B</param>
+	/// <summary>æŒ‡å®šã•ã‚ŒãŸãƒ‡ãƒ¼ã‚¿ã‚»ãƒƒãƒˆã®ä¸€éƒ¨ã‚’ã“ã®ãƒ‡ãƒ¼ã‚¿ã‚»ãƒƒãƒˆã«ã‚³ãƒ”ãƒ¼ã—ã¾ã™ã€‚</summary>
+	/// <param name="dataset">åŸºã«ãªã‚‹ãƒ‡ãƒ¼ã‚¿ã‚»ãƒƒãƒˆã‚’æŒ‡å®šã—ã¾ã™ã€‚</param>
+	/// <param name="count"><paramref name="dataset"/> ã‹ã‚‰ã“ã®ãƒ‡ãƒ¼ã‚¿ã‚»ãƒƒãƒˆã«ã‚³ãƒ”ãƒ¼ã•ã‚Œã‚‹ãƒ‡ãƒ¼ã‚¿æ•°ã‚’æŒ‡å®šã—ã¾ã™ã€‚ãƒ‡ãƒ¼ã‚¿ã¯å…ˆé ­ã‹ã‚‰ã‚³ãƒ”ãƒ¼ã•ã‚Œã¾ã™ã€‚</param>
 	void CopyFrom(const DataSet& dataset, unsigned int count);
 
-	/// <summary>‰æ‘œ‚¨‚æ‚Ñƒ‰ƒxƒ‹‚Ì•Û‘¶—Ìˆæ‚ğŠm•Û‚µ‚Ü‚·B</summary>
-	/// <param name="length">‘ƒpƒ^[ƒ“”‚ğw’è‚µ‚Ü‚·B</param>
-	/// <param name="newRow">‰æ‘œ‚Ì‚’¼•ûŒü‚Ì’·‚³‚ğw’è‚µ‚Ü‚·B</param>
-	/// <param name="newColumn">‰æ‘œ‚Ì…•½•ûŒü‚Ì’·‚³‚ğw’è‚µ‚Ü‚·B</param>
+	/// <summary>ç”»åƒãŠã‚ˆã³ãƒ©ãƒ™ãƒ«ã®ä¿å­˜é ˜åŸŸã‚’ç¢ºä¿ã—ã¾ã™ã€‚</summary>
+	/// <param name="length">ç·ãƒ‘ã‚¿ãƒ¼ãƒ³æ•°ã‚’æŒ‡å®šã—ã¾ã™ã€‚</param>
+	/// <param name="newRow">ç”»åƒã®å‚ç›´æ–¹å‘ã®é•·ã•ã‚’æŒ‡å®šã—ã¾ã™ã€‚</param>
+	/// <param name="newColumn">ç”»åƒã®æ°´å¹³æ–¹å‘ã®é•·ã•ã‚’æŒ‡å®šã—ã¾ã™ã€‚</param>
 	void Allocate(unsigned int length, unsigned int newRow, unsigned int newColumn);
 
-	/// <summary>‘ƒpƒ^[ƒ“”‚ğæ“¾‚µ‚Ü‚·B</summary>
+	/// <summary>ç·ãƒ‘ã‚¿ãƒ¼ãƒ³æ•°ã‚’å–å¾—ã—ã¾ã™ã€‚</summary>
 	unsigned int Count() const { return count; }
 
-	/// <summary>‰æ‘œ‚Ì‚’¼•ûŒü‚Ì’·‚³‚ğæ“¾‚µ‚Ü‚·B</summary>
+	/// <summary>ç”»åƒã®å‚ç›´æ–¹å‘ã®é•·ã•ã‚’å–å¾—ã—ã¾ã™ã€‚</summary>
 	unsigned int Row() const { return row; }
 
-	/// <summary>‰æ‘œ‚Ì…•½•ûŒü‚Ì’·‚³‚ğæ“¾‚µ‚Ü‚·B</summary>
+	/// <summary>ç”»åƒã®æ°´å¹³æ–¹å‘ã®é•·ã•ã‚’å–å¾—ã—ã¾ã™ã€‚</summary>
 	unsigned int Column() const { return column; }
 
-	/// <summary>Šm•Û‚³‚ê‚½ƒ‰ƒxƒ‹‚Ì•Û‘¶—Ìˆæ‚Ö‚Ìƒ|ƒCƒ“ƒ^‚ğ•Ô‚µ‚Ü‚·B</summary>
+	/// <summary>ç¢ºä¿ã•ã‚ŒãŸãƒ©ãƒ™ãƒ«ã®ä¿å­˜é ˜åŸŸã¸ã®ãƒã‚¤ãƒ³ã‚¿ã‚’è¿”ã—ã¾ã™ã€‚</summary>
 	unsigned int* Labels() { return labels; }
 
-	/// <summary>Šm•Û‚³‚ê‚½ƒ‰ƒxƒ‹‚Ì•Û‘¶—Ìˆæ‚Ö‚Ìƒ|ƒCƒ“ƒ^‚ğ•Ô‚µ‚Ü‚·B</summary>
+	/// <summary>ç¢ºä¿ã•ã‚ŒãŸãƒ©ãƒ™ãƒ«ã®ä¿å­˜é ˜åŸŸã¸ã®ãƒã‚¤ãƒ³ã‚¿ã‚’è¿”ã—ã¾ã™ã€‚</summary>
 	const unsigned int* Labels() const { return labels; }
 
-	/// <summary>Šm•Û‚³‚ê‚½‰æ‘œ‚Ì•Û‘¶—Ìˆæ‚Ö‚Ìƒ|ƒCƒ“ƒ^‚ğ•Ô‚µ‚Ü‚·B</summary>
+	/// <summary>ç¢ºä¿ã•ã‚ŒãŸç”»åƒã®ä¿å­˜é ˜åŸŸã¸ã®ãƒã‚¤ãƒ³ã‚¿ã‚’è¿”ã—ã¾ã™ã€‚</summary>
 	double** Images() { return images; }
 
-	/// <summary>Šm•Û‚³‚ê‚½‰æ‘œ‚Ì•Û‘¶—Ìˆæ‚Ö‚Ìƒ|ƒCƒ“ƒ^‚ğ•Ô‚µ‚Ü‚·B</summary>
+	/// <summary>ç¢ºä¿ã•ã‚ŒãŸç”»åƒã®ä¿å­˜é ˜åŸŸã¸ã®ãƒã‚¤ãƒ³ã‚¿ã‚’è¿”ã—ã¾ã™ã€‚</summary>
 	double** const Images() const { return images; }
 
 private:
@@ -82,30 +82,30 @@ private:
 	void Deallocate();
 };
 
-/// <summary>ŠwKƒf[ƒ^‚¨‚æ‚Ñ¯•Êƒf[ƒ^‚ğŠi”[‚·‚éƒZƒbƒg‚ğ•\‚µ‚Ü‚·B</summary>
+/// <summary>å­¦ç¿’ãƒ‡ãƒ¼ã‚¿ãŠã‚ˆã³è­˜åˆ¥ãƒ‡ãƒ¼ã‚¿ã‚’æ ¼ç´ã™ã‚‹ã‚»ãƒƒãƒˆã‚’è¡¨ã—ã¾ã™ã€‚</summary>
 class LearningSet
 {
 public:
-	/// <summary><see cref="LearningSet"/> ƒNƒ‰ƒX‚ÌV‚µ‚¢ƒCƒ“ƒXƒ^ƒ“ƒX‚ğ‰Šú‰»‚µ‚Ü‚·B</summary>
+	/// <summary><see cref="LearningSet"/> ã‚¯ãƒ©ã‚¹ã®æ–°ã—ã„ã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹ã‚’åˆæœŸåŒ–ã—ã¾ã™ã€‚</summary>
 	LearningSet() { }
 
-	/// <summary>w’è‚³‚ê‚½ <see cref="LearningSet"/> ‚Ìƒf[ƒ^‚ğƒRƒs[‚µ‚ÄA<see cref="LearningSet"/> ƒNƒ‰ƒX‚ÌV‚µ‚¢ƒCƒ“ƒXƒ^ƒ“ƒX‚ğ‰Šú‰»‚µ‚Ü‚·B</summary>
-	/// <param name="learningSet">ƒRƒs[Œ³‚Ì <see cref="LearningSet"/> ‚ğw’è‚µ‚Ü‚·B</param>
+	/// <summary>æŒ‡å®šã•ã‚ŒãŸ <see cref="LearningSet"/> ã®ãƒ‡ãƒ¼ã‚¿ã‚’ã‚³ãƒ”ãƒ¼ã—ã¦ã€<see cref="LearningSet"/> ã‚¯ãƒ©ã‚¹ã®æ–°ã—ã„ã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹ã‚’åˆæœŸåŒ–ã—ã¾ã™ã€‚</summary>
+	/// <param name="learningSet">ã‚³ãƒ”ãƒ¼å…ƒã® <see cref="LearningSet"/> ã‚’æŒ‡å®šã—ã¾ã™ã€‚</param>
 	LearningSet(const LearningSet& learningSet) { *this = learningSet; }
 
-	/// <summary>w’è‚³‚ê‚½ <see cref="LearningSet"/> ‚Ìƒf[ƒ^‚ğˆÚ“®‚µ‚ÄA<see cref="LearningSet"/> ƒNƒ‰ƒX‚ÌV‚µ‚¢ƒCƒ“ƒXƒ^ƒ“ƒX‚ğ‰Šú‰»‚µ‚Ü‚·B</summary>
-	/// <param name="learningSet">ˆÚ“®Œ³‚Ì <see cref="LearningSet"/> ‚ğw’è‚µ‚Ü‚·B</param>
+	/// <summary>æŒ‡å®šã•ã‚ŒãŸ <see cref="LearningSet"/> ã®ãƒ‡ãƒ¼ã‚¿ã‚’ç§»å‹•ã—ã¦ã€<see cref="LearningSet"/> ã‚¯ãƒ©ã‚¹ã®æ–°ã—ã„ã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹ã‚’åˆæœŸåŒ–ã—ã¾ã™ã€‚</summary>
+	/// <param name="learningSet">ç§»å‹•å…ƒã® <see cref="LearningSet"/> ã‚’æŒ‡å®šã—ã¾ã™ã€‚</param>
 	LearningSet(LearningSet&& learningSet) { *this = std::move(learningSet); }
 
-	/// <summary>w’è‚³‚ê‚½ <see cref="LearningSet"/> ‚Ìˆê•”‚ğg—p‚µ‚ÄA<see cref="LearningSet"/> ƒNƒ‰ƒX‚ÌV‚µ‚¢ƒCƒ“ƒXƒ^ƒ“ƒX‚ğ‰Šú‰»‚µ‚Ü‚·B</summary>
-	/// <param name="learningSet">Šî‚É‚È‚é <see cref="LearningSet"/> ‚ğw’è‚µ‚Ü‚·B</param>
-	/// <param name="trainingDataCount"><paramref name="learningSet"/> ‚©‚ç‚±‚Ì <see cref="LearningSet"/> ‚ÉƒRƒs[‚³‚ê‚éŠwKƒf[ƒ^”‚ğw’è‚µ‚Ü‚·B</param>
-	/// <param name="testDataCount"><paramref name="learningSet"/> ‚©‚ç‚±‚Ì <see cref="LearningSet"/> ‚ÉƒRƒs[‚³‚ê‚éƒeƒXƒgƒf[ƒ^”‚ğw’è‚µ‚Ü‚·B</param>
+	/// <summary>æŒ‡å®šã•ã‚ŒãŸ <see cref="LearningSet"/> ã®ä¸€éƒ¨ã‚’ä½¿ç”¨ã—ã¦ã€<see cref="LearningSet"/> ã‚¯ãƒ©ã‚¹ã®æ–°ã—ã„ã‚¤ãƒ³ã‚¹ã‚¿ãƒ³ã‚¹ã‚’åˆæœŸåŒ–ã—ã¾ã™ã€‚</summary>
+	/// <param name="learningSet">åŸºã«ãªã‚‹ <see cref="LearningSet"/> ã‚’æŒ‡å®šã—ã¾ã™ã€‚</param>
+	/// <param name="trainingDataCount"><paramref name="learningSet"/> ã‹ã‚‰ã“ã® <see cref="LearningSet"/> ã«ã‚³ãƒ”ãƒ¼ã•ã‚Œã‚‹å­¦ç¿’ãƒ‡ãƒ¼ã‚¿æ•°ã‚’æŒ‡å®šã—ã¾ã™ã€‚</param>
+	/// <param name="testDataCount"><paramref name="learningSet"/> ã‹ã‚‰ã“ã® <see cref="LearningSet"/> ã«ã‚³ãƒ”ãƒ¼ã•ã‚Œã‚‹ãƒ†ã‚¹ãƒˆãƒ‡ãƒ¼ã‚¿æ•°ã‚’æŒ‡å®šã—ã¾ã™ã€‚</param>
 	LearningSet(const LearningSet& learningSet, unsigned int trainingDataCount, unsigned int testDataCount) : trainingData(learningSet.trainingData, trainingDataCount), testData(learningSet.testData, testDataCount) { ClassCount = learningSet.ClassCount; }
 
-	/// <summary>w’è‚³‚ê‚½ <see cref="LearningSet"/> ‚Ìƒf[ƒ^‚ğ‚±‚Ì <see cref="LearningSet"/> ‚ÉƒRƒs[‚µ‚Ü‚·B</summary>
-	/// <param name="learningSet">ƒf[ƒ^‚ÌƒRƒs[Œ³‚Ì <see cref="LearningSet"/> ‚ğw’è‚µ‚Ü‚·B</param>
-	/// <returns>‚±‚Ì <see cref="LearningSet"/> ‚Ö‚ÌQÆB</returns>
+	/// <summary>æŒ‡å®šã•ã‚ŒãŸ <see cref="LearningSet"/> ã®ãƒ‡ãƒ¼ã‚¿ã‚’ã“ã® <see cref="LearningSet"/> ã«ã‚³ãƒ”ãƒ¼ã—ã¾ã™ã€‚</summary>
+	/// <param name="learningSet">ãƒ‡ãƒ¼ã‚¿ã®ã‚³ãƒ”ãƒ¼å…ƒã® <see cref="LearningSet"/> ã‚’æŒ‡å®šã—ã¾ã™ã€‚</param>
+	/// <returns>ã“ã® <see cref="LearningSet"/> ã¸ã®å‚ç…§ã€‚</returns>
 	LearningSet& operator=(const LearningSet& learningSet)
 	{
 		trainingData = learningSet.trainingData;
@@ -114,9 +114,9 @@ public:
 		return *this;
 	}
 
-	/// <summary>w’è‚³‚ê‚½ <see cref="LearningSet"/> ‚Ìƒf[ƒ^‚ğ‚±‚Ì <see cref="LearningSet"/> ‚ÉˆÚ“®‚µ‚Ü‚·B</summary>
-	/// <param name="learningSet">ƒf[ƒ^‚ÌˆÚ“®Œ³‚Ì <see cref="LearningSet"/> ‚ğw’è‚µ‚Ü‚·B</param>
-	/// <returns>‚±‚Ì <see cref="LearningSet"/> ‚Ö‚ÌQÆB</returns>
+	/// <summary>æŒ‡å®šã•ã‚ŒãŸ <see cref="LearningSet"/> ã®ãƒ‡ãƒ¼ã‚¿ã‚’ã“ã® <see cref="LearningSet"/> ã«ç§»å‹•ã—ã¾ã™ã€‚</summary>
+	/// <param name="learningSet">ãƒ‡ãƒ¼ã‚¿ã®ç§»å‹•å…ƒã® <see cref="LearningSet"/> ã‚’æŒ‡å®šã—ã¾ã™ã€‚</param>
+	/// <returns>ã“ã® <see cref="LearningSet"/> ã¸ã®å‚ç…§ã€‚</returns>
 	LearningSet& operator=(LearningSet&& learningSet)
 	{
 		trainingData = std::move(learningSet.trainingData);
@@ -125,19 +125,19 @@ public:
 		return *this;
 	}
 
-	/// <summary>ŠwKƒf[ƒ^‚ğæ“¾‚µ‚Ü‚·B</summary>
+	/// <summary>å­¦ç¿’ãƒ‡ãƒ¼ã‚¿ã‚’å–å¾—ã—ã¾ã™ã€‚</summary>
 	DataSet& TrainingData() { return trainingData; }
 
-	/// <summary>ŠwKƒf[ƒ^‚ğæ“¾‚µ‚Ü‚·B</summary>
+	/// <summary>å­¦ç¿’ãƒ‡ãƒ¼ã‚¿ã‚’å–å¾—ã—ã¾ã™ã€‚</summary>
 	const DataSet& TrainingData() const { return trainingData; }
 
-	/// <summary>ƒeƒXƒgƒf[ƒ^‚ğæ“¾‚µ‚Ü‚·B</summary>
+	/// <summary>ãƒ†ã‚¹ãƒˆãƒ‡ãƒ¼ã‚¿ã‚’å–å¾—ã—ã¾ã™ã€‚</summary>
 	DataSet& TestData() { return testData; }
 
-	/// <summary>ƒeƒXƒgƒf[ƒ^‚ğæ“¾‚µ‚Ü‚·B</summary>
+	/// <summary>ãƒ†ã‚¹ãƒˆãƒ‡ãƒ¼ã‚¿ã‚’å–å¾—ã—ã¾ã™ã€‚</summary>
 	const DataSet& TestData() const { return testData; }
 
-	/// <summary>‚±‚ÌƒZƒbƒg‚ÉŠi”[‚³‚ê‚Ä‚¢‚éƒpƒ^[ƒ“‚ÌƒNƒ‰ƒX”‚ğ¦‚µ‚Ü‚·B</summary>
+	/// <summary>ã“ã®ã‚»ãƒƒãƒˆã«æ ¼ç´ã•ã‚Œã¦ã„ã‚‹ãƒ‘ã‚¿ãƒ¼ãƒ³ã®ã‚¯ãƒ©ã‚¹æ•°ã‚’ç¤ºã—ã¾ã™ã€‚</summary>
 	unsigned int ClassCount;
 
 private:
@@ -145,6 +145,6 @@ private:
 	DataSet testData;
 };
 
-/// <summary>MNIST ‚ğƒ[ƒh‚µ‚Ü‚·B</summary>
-/// <param name="directoryName">MNIST ƒf[ƒ^‚ª‘¶İ‚·‚éƒfƒBƒŒƒNƒgƒŠ‚ÌêŠ‚ğw’è‚µ‚Ü‚·B</param>
+/// <summary>MNIST ã‚’ãƒ­ãƒ¼ãƒ‰ã—ã¾ã™ã€‚</summary>
+/// <param name="directoryName">MNIST ãƒ‡ãƒ¼ã‚¿ãŒå­˜åœ¨ã™ã‚‹ãƒ‡ã‚£ãƒ¬ã‚¯ãƒˆãƒªã®å ´æ‰€ã‚’æŒ‡å®šã—ã¾ã™ã€‚</param>
 LearningSet LoadMnistSet(const std::string& directoryName);

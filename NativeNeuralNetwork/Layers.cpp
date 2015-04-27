@@ -1,4 +1,5 @@
 #include <cassert>
+#include <memory>
 #include "Layers.h"
 
 Layer::Layer(unsigned int nIn, unsigned int nOut, const ActivationFunction::NormalForm& activation) : nIn(nIn), nOut(nOut), Weight(new double*[nOut]), Bias(new double[nOut]()), activation(activation)
@@ -9,7 +10,7 @@ Layer::Layer(unsigned int nIn, unsigned int nOut, const ActivationFunction::Norm
 		Weight[i] = Weight[i - 1] + nOut;
 }
 
-Layer::~Layer()
+Layer::â€¾Layer()
 {
 	delete[] Weight[0];
 	delete[] Weight;
@@ -64,7 +65,7 @@ HiddenLayer::HiddenLayer(unsigned int nIn, unsigned int nOut, const ActivationFu
 	}
 }
 
-HiddenLayer::~HiddenLayer()
+HiddenLayer::â€¾HiddenLayer()
 {
 	delete[] visibleBias;
 }
@@ -160,7 +161,7 @@ unique_or_raw_array<double> HiddenLayerCollection::Compute(const double* input, 
 void HiddenLayerCollection::Set(unsigned int index, unsigned int neurons)
 {
 	if (frozen)
-		throw std::domain_error("ŒÅ’è‚³‚ê‚½ƒRƒŒƒNƒVƒ‡ƒ“‚Ì‰B‚ê‘w‚ðÝ’è‚·‚é‚±‚Æ‚Í‚Å‚«‚Ü‚¹‚ñB");
+		throw std::domain_error("å›ºå®šã•ã‚ŒãŸã‚³ãƒ¬ã‚¯ã‚·ãƒ§ãƒ³ã®éš ã‚Œå±¤ã‚’è¨­å®šã™ã‚‹ã“ã¨ã¯ã§ãã¾ã›ã‚“ã€‚");
 	if (index > items.size())
 		throw std::out_of_range("index");
 	if (index == items.size())

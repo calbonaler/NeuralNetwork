@@ -1,6 +1,7 @@
 #include <fstream>
 #include <cstdint>
 #include <cassert>
+#include <limits>
 #include "LearningSet.h"
 
 DataSet& DataSet::operator=(DataSet&& dataset)

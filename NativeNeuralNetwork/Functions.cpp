@@ -1,3 +1,5 @@
+#include <limits>
+#include <cmath>
 #include "Functions.h"
 
 const ActivationFunction* ActivationFunction::Sigmoid()

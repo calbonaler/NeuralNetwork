@@ -3,38 +3,38 @@
 #include "Layers.h"
 
 /// <summary>
-/// �ϑw�G���������ȕ��������\���܂��B
+/// 積層雑音除去自己符号化器を表します。
 /// 
-/// �ϑw�G���������ȕ������탂�f���͂������̎G���������ȕ��������ςݏd�˂邱�Ƃɂ�蓾���܂��B
-/// �� i �w�ڂ̎G���������ȕ�������̉B��w�͑� i + 1 �w�ڂ̎G���������ȕ�������̓��͂ɂȂ�܂��B
-/// �ŏ��̑w�̎G���������ȕ�������͓��͂Ƃ��Đϑw�G���������ȕ�������̓��͂��󂯎��A�Ō�̑w�̎G���������ȕ�������̉B��w�͏o�͂�\���܂��B
-/// ����: ���O�w�K��A�ϑw�G���������ȕ�������͒ʏ�̑��w�p�[�Z�v�g�����Ƃ��Ĉ����܂��B�G���������ȕ�������͏d�݂̏������ɂ̂ݎg�p����܂��B
+/// 積層雑音除去自己符号化器モデルはいくつかの雑音除去自己符号化器を積み重ねることにより得られます。
+/// 第 i 層目の雑音除去自己符号化器の隠れ層は第 i + 1 層目の雑音除去自己符号化器の入力になります。
+/// 最初の層の雑音除去自己符号化器は入力として積層雑音除去自己符号化器の入力を受け取り、最後の層の雑音除去自己符号化器の隠れ層は出力を表します。
+/// 注釈: 事前学習後、積層雑音除去自己符号化器は通常の多層パーセプトロンとして扱われます。雑音除去自己符号化器は重みの初期化にのみ使用されます。
 /// </summary>
 class StackedDenoisingAutoEncoder
 {
 public:
 	FORCE_UNCOPYABLE(StackedDenoisingAutoEncoder);
 
-	/// <summary><see cref="StackedDenoisingAutoEncoder"/> �N���X�𗐐�������̃V�[�h�l�Ɠ��͎��������g�p���ď��������܂��B</summary>
-	/// <param name="rng">�d�݂̏������ƎG���������ȕ�������̎G�������Ɏg�p����闐��������̃V�[�h�l���w�肵�܂��B</param>
-	/// <param name="nIn">���̃l�b�g���[�N�̓��͎��������w�肵�܂��B</param>
+	/// <summary><see cref="StackedDenoisingAutoEncoder"/> クラスを乱数生成器のシード値と入力次元数を使用して初期化します。</summary>
+	/// <param name="rng">重みの初期化と雑音除去自己符号化器の雑音生成に使用される乱数生成器のシード値を指定します。</param>
+	/// <param name="nIn">このネットワークの入力次元数を指定します。</param>
 	StackedDenoisingAutoEncoder(std::mt19937::result_type rngSeed, unsigned int nIn) : HiddenLayers(rngSeed, nIn) { }
 
-	/// <summary>�B��w�̃R���N�V�������擾���܂��B</summary>
+	/// <summary>隠れ層のコレクションを取得します。</summary>
 	HiddenLayerCollection HiddenLayers;
 
-	/// <summary>���� SDA �̏o�͑w�̃j���[���������w�肳�ꂽ�l�ɐݒ肵�܂��B</summary>
-	/// <param name="neurons">SDA �̏o�͑w�̃j���[���������w�肵�܂��B</param>
+	/// <summary>この SDA の出力層のニューロン数を指定された値に設定します。</summary>
+	/// <param name="neurons">SDA の出力層のニューロン数を指定します。</param>
 	void SetLogisticRegressionLayer(unsigned int neurons);
 
-	/// <summary>�w�肳�ꂽ�f�[�^�Z�b�g�ɑ΂��ăt�@�C���`���[�j���O�����s���܂��B</summary>
-	/// <param name="dataset">�t�@�C���`���[�j���O�Ɏg�p�����f�[�^�Z�b�g���w�肵�܂��B���̃f�[�^�ɂ̓f�[�^�_�ƃ��x�����܂܂�܂��B</param>
-	/// <param name="learningRate">�t�@�C���`���[�j���O�i�K�Ŏg�p�����w�K�����w�肵�܂��B</param>
+	/// <summary>指定されたデータセットに対してファインチューニングを実行します。</summary>
+	/// <param name="dataset">ファインチューニングに使用されるデータセットを指定します。このデータにはデータ点とラベルが含まれます。</param>
+	/// <param name="learningRate">ファインチューニング段階で使用される学習率を指定します。</param>
 	void FineTune(const DataSet& dataset, double learningRate);
 
-	/// <summary>�w�肳�ꂽ�f�[�^�Z�b�g�̃o�b�`�S�̂ɑ΂��Č�藦���v�Z���܂��B</summary>
-	/// <param name="dataset">��藦�̌v�Z�ΏۂƂȂ�f�[�^�Z�b�g���w�肵�܂��B���̃f�[�^�Z�b�g�ɂ̓f�[�^�_�ƃ��x�����܂܂�܂��B</param>
-	/// <returns>�f�[�^�Z�b�g�S�̂ɑ΂��Čv�Z���ꂽ��藦�B</returns>
+	/// <summary>指定されたデータセットのバッチ全体に対して誤り率を計算します。</summary>
+	/// <param name="dataset">誤り率の計算対象となるデータセットを指定します。このデータセットにはデータ点とラベルが含まれます。</param>
+	/// <returns>データセット全体に対して計算された誤り率。</returns>
 	double ComputeErrorRates(const DataSet& dataset);
 
 private:
