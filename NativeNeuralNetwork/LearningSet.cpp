@@ -32,15 +32,15 @@ void DataSet::CopyFrom(const DataSet& dataset, unsigned int count)
 	}
 }
 
-void DataSet::Allocate(unsigned int length, unsigned int newRow, unsigned int newColumn)
+void DataSet::Allocate(unsigned int length, int newRow, int newColumn)
 {
 	assert(length > 0);
 	assert(newRow * newColumn > 0);
 	Deallocate();
-	labels = new unsigned int[length];
+	labels = new int[length];
 	images = new double*[length];
 	for (unsigned int i = 0; i < length; i++)
-		images[i] = new double[newRow * newColumn];
+		images[i] = new double[(unsigned)(newRow * newColumn)];
 	row = newRow;
 	column = newColumn;
 	count = length;
@@ -94,7 +94,7 @@ void LoadMnistSetInternal(DataSet& dataset, const std::string& fileName)
 	auto row = ReadInt32BigEndian(imageFile);
 	auto column = ReadInt32BigEndian(imageFile);
 	auto imageLength = row * column;
-	dataset.Allocate(length, row, column);
+	dataset.Allocate(length, (signed)row, (signed)column);
 	for (uint32_t i = 0; i < length; i++)
 	{
 		dataset.Labels()[i] = ReadByte(labelFile);

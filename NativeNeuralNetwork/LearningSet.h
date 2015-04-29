@@ -49,22 +49,22 @@ public:
 	/// <param name="length">総パターン数を指定します。</param>
 	/// <param name="newRow">画像の垂直方向の長さを指定します。</param>
 	/// <param name="newColumn">画像の水平方向の長さを指定します。</param>
-	void Allocate(unsigned int length, unsigned int newRow, unsigned int newColumn);
+	void Allocate(unsigned int length, int newRow, int newColumn);
 
 	/// <summary>総パターン数を取得します。</summary>
 	unsigned int Count() const { return count; }
 
 	/// <summary>画像の垂直方向の長さを取得します。</summary>
-	unsigned int Row() const { return row; }
+	int Row() const { return row; }
 
 	/// <summary>画像の水平方向の長さを取得します。</summary>
-	unsigned int Column() const { return column; }
+	int Column() const { return column; }
 
 	/// <summary>確保されたラベルの保存領域へのポインタを返します。</summary>
-	unsigned int* Labels() { return labels; }
+	int* Labels() { return labels; }
 
 	/// <summary>確保されたラベルの保存領域へのポインタを返します。</summary>
-	const unsigned int* Labels() const { return labels; }
+	const int* Labels() const { return labels; }
 
 	/// <summary>確保された画像の保存領域へのポインタを返します。</summary>
 	double** Images() { return images; }
@@ -73,10 +73,10 @@ public:
 	double** const Images() const { return images; }
 
 private:
-	unsigned int row;
-	unsigned int column;
+	int row;
+	int column;
 	unsigned int count;
-	unsigned int* labels;
+	int* labels;
 	double** images;
 
 	void Deallocate();

@@ -16,11 +16,11 @@ void StackedDenoisingAutoEncoder::FineTune(const DataSet& dataset, double learni
 		for (; n < HiddenLayers.Count(); n++)
 			inputs[n + 1] = HiddenLayers[n].Compute(inputs[n].get());
 		inputs[n + 1] = outputLayer->Compute(inputs[n].get());
-		Indexer upperInfo = [&](unsigned int i) { return i == dataset.Labels()[d] ? 1.0 : 0.0; };
+		Indexer upperInfo = [&](int i) { return i == dataset.Labels()[d] ? 1.0 : 0.0; };
 		std::unique_ptr<double[]> lowerInfo(outputLayer->Learn(inputs[n].get(), inputs[n + 1].get(), upperInfo, learningRate));
 		while (--n <= HiddenLayers.Count())
 		{
-			upperInfo = [&](unsigned int i) { return lowerInfo[i]; };
+			upperInfo = [&](int i) { return lowerInfo[(unsigned)i]; };
 			lowerInfo = HiddenLayers[n].Learn(inputs[n].get(), inputs[n + 1].get(), upperInfo, learningRate);
 		}
 	}

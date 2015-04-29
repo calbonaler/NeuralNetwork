@@ -18,7 +18,7 @@ public:
 	/// <summary><see cref="StackedDenoisingAutoEncoder"/> クラスを乱数生成器のシード値と入力次元数を使用して初期化します。</summary>
 	/// <param name="rng">重みの初期化と雑音除去自己符号化器の雑音生成に使用される乱数生成器のシード値を指定します。</param>
 	/// <param name="nIn">このネットワークの入力次元数を指定します。</param>
-	StackedDenoisingAutoEncoder(std::mt19937::result_type rngSeed, unsigned int nIn) : HiddenLayers(rngSeed, nIn) { }
+	StackedDenoisingAutoEncoder(std::mt19937::result_type rngSeed, int nIn) : HiddenLayers(rngSeed, nIn) { }
 
 	/// <summary>隠れ層のコレクションを取得します。</summary>
 	HiddenLayerCollection HiddenLayers;

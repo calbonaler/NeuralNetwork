@@ -23,7 +23,7 @@ void TestSdA(const LearningSet& datasets)
 	std::ofstream log("Experiments (Variable Neurons).log", std::ios::out);
 	for (unsigned int i = 0; i < 3; i++)
 	{
-		for (unsigned int neurons = 100; neurons <= 100; neurons += 100)
+		for (int neurons = 100; neurons <= 100; neurons += 100)
 		{
 			sda.HiddenLayers.Set(i, neurons);
 			std::cout << "Number of neurons of layer " << i << " is " << neurons << std::endl;

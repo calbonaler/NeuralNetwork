@@ -18,9 +18,9 @@ public:
 	/// <summary>この層のバイアスを示します。</summary>
 	double* const Bias;
 	/// <summary>この層の入力ユニット数を示します。</summary>
-	unsigned int const nIn;
+	int const nIn;
 	/// <summary>この層の出力ユニット数を示します。</summary>
-	unsigned int const nOut;
+	int const nOut;
 
 	/// <summary>この層の入力に対する出力を計算します。</summary>
 	/// <param name="input">層に入力するベクトルを指定します。</param>
@@ -40,7 +40,7 @@ protected:
 	/// <param name="nIn">この層に入力される層のニューロン数を指定します。</param>
 	/// <param name="nOut">この層のニューロン数を指定します。</param>
 	/// <param name="activation">この層に適用する活性化関数を指定します。</param>
-	Layer(unsigned int nIn, unsigned int nOut, const ActivationFunction::NormalForm& activation);
+	Layer(int nIn, int nOut, const ActivationFunction::NormalForm& activation);
 
 	/// <summary>この層の線形計算の結果に対するニューラルネットワークのコストの勾配ベクトル (Delta) の要素を計算します。</summary>
 	/// <param name="output">この層からの出力を示すベクトルの要素を指定します。</param>
@@ -81,7 +81,7 @@ public:
 	/// <param name="nOut">隠れ素子の数を指定します。</param>
 	/// <param name="activation">隠れ層に適用される活性化関数を指定します。</param>
 	/// <param name="hiddenLayers">この隠れ層が所属している Stacked Denoising Auto-Encoder のすべての隠れ層を表すリストを指定します。</param>
-	HiddenLayer(unsigned int nIn, unsigned int nOut, const ActivationFunction* activation, HiddenLayerCollection* hiddenLayers);
+	HiddenLayer(int nIn, int nOut, const ActivationFunction* activation, HiddenLayerCollection* hiddenLayers);
 
 	/// <summary>この層を破棄します。</summary>
 	~HiddenLayer();
@@ -121,7 +121,7 @@ public:
 	/// <summary>乱数生成器のシード値と入力層のユニット数を指定して、<see cref="HiddenLayerCollection"/> クラスの新しいインスタンスを初期化します。</summary>
 	/// <param name="rngSeed">隠れ層の計算に使用される乱数生成器のシード値を指定します。</param>
 	/// <param name="nIn">入力層のユニット数を指定します。</param>
-	HiddenLayerCollection(std::mt19937::result_type rngSeed, unsigned int nIn) : RandomNumberGenerator(rngSeed), nextLayerInputUnits(nIn), frozen(false) { }
+	HiddenLayerCollection(std::mt19937::result_type rngSeed, int nIn) : RandomNumberGenerator(rngSeed), nextLayerInputUnits(nIn), frozen(false) { }
 
 	/// <summary>隠れ層の計算に使用される乱数生成器を示します。</summary>
 	std::mt19937 RandomNumberGenerator;
@@ -135,7 +135,7 @@ public:
 	/// <summary>指定されたインデックスの隠れ層のニューロン数を変更します。このメソッドは隠れ層を追加することもできます。</summary>
 	/// <param name="index">ニューロン数を変更する隠れ層のインデックスを指定します。</param>
 	/// <param name="neurons">指定された隠れ層の新しいニューロン数を指定します。</param>
-	void Set(unsigned int index, unsigned int neurons);
+	void Set(size_t index, int neurons);
 
 	/// <summary>このコレクションを固定して変更不可能にします。</summary>
 	void Freeze() { frozen = true; }
@@ -151,7 +151,7 @@ public:
 
 private:
 	bool frozen;
-	unsigned int nextLayerInputUnits;
+	int nextLayerInputUnits;
 	std::vector<std::unique_ptr<HiddenLayer>> items;
 };
 
@@ -168,12 +168,12 @@ public:
 	/// <summary>ロジスティック回帰のパラメータを初期化します。</summary>
 	/// <param name="nIn">入力素子の数 (データ点が存在する空間の次元) を指定します。</param>
 	/// <param name="nOut">出力素子の数 (ラベルが存在する空間の次元) を指定します。</param>
-	LogisticRegressionLayer(unsigned int nIn, unsigned int nOut) : Layer(nIn, nOut, ActivationFunction::SoftMax) { }
+	LogisticRegressionLayer(int nIn, int nOut) : Layer(nIn, nOut, ActivationFunction::SoftMax) { }
 
 	/// <summary>確率が最大となるクラスを推定します。</summary>
 	/// <param name="input">層に入力するベクトルを指定します。</param>
 	/// <returns>推定された確率最大のクラスのインデックス。</returns>
-	unsigned int Predict(const double* input) const;
+	int Predict(const double* input) const;
 
 protected:
 	/// <summary>この層の線形計算の結果に対するニューラルネットワークのコストの勾配ベクトル (Delta) の要素を計算します。</summary>

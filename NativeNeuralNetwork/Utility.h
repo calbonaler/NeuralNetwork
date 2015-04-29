@@ -9,7 +9,7 @@
 
 template <class T> inline T* pointer_cast(void* pointer) { return static_cast<T*>(pointer); }
 
-typedef std::function<double(unsigned int)> Indexer;
+typedef std::function<double(int)> Indexer;
 
 template <class T> class unique_or_raw_array
 {
