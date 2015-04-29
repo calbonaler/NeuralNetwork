@@ -2,7 +2,7 @@
 #include <memory>
 #include "Layers.h"
 
-Layer::Layer(int nIn, int nOut, const ActivationFunction::NormalForm& activation) : nIn(nIn), nOut(nOut), Weight(new double*[(unsigned)nOut]), Bias(new double[(unsigned)nOut]()), activation(activation)
+Layer::Layer(int nIn, int nOut, const ActivationFunction::NormalForm& activation) : nIn(nIn), nOut(nOut), Weight(new double*[(unsigned)nOut]), Bias(new double[(unsigned)nOut]()), Activation(activation)
 {
 	assert(nIn * nOut > 0);
 	Weight[0] = new double[(unsigned)(nIn * nOut)]();
@@ -21,7 +21,7 @@ std::unique_ptr<double[]> Layer::Compute(const double* input) const
 {
 	assert(input);
 	std::unique_ptr<double[]> output = std::make_unique<double[]>((unsigned)nOut);
-	activation([&](int j)
+	Activation([&](int j)
 	{
 		double ret = 0;
 		for (int k = 0; k < nIn; k++)
@@ -83,14 +83,14 @@ double HiddenLayer::Train(const DataSet& dataset, double learningRate, double no
 		auto image = hiddenLayers->Compute(dataset.Images()[n], this);
 		for (int i = 0; i < nIn; i++)
 			corrupted[(unsigned)i] = dist(hiddenLayers->RandomNumberGenerator) < noise ? 0 : image.get()[i];
-		ActivationFunction::Sigmoid()->Normal([&](int j)
+		Activation([&](int j)
 		{
 			double ret = 0;
 			for (int i = 0; i < nIn; i++)
 				ret += corrupted[(unsigned)i] * Weight[j][i];
 			return ret + Bias[j];
 		}, latent.get(), nOut);
-		ActivationFunction::Sigmoid()->Normal([&](int j)
+		Activation([&](int j)
 		{
 			double ret = 0;
 			for (int i = 0; i < nOut; i++)
@@ -103,7 +103,7 @@ double HiddenLayer::Train(const DataSet& dataset, double learningRate, double no
 			delta[(unsigned)i] = 0;
 			for (int j = 0; j < nIn; j++)
 				delta[(unsigned)i] += (reconstructed[(unsigned)j] - image.get()[j]) * Weight[i][j];
-			delta[(unsigned)i] *= ActivationFunction::Sigmoid()->Differentiated(latent[(unsigned)i]);
+			delta[(unsigned)i] *= differentiatedActivation(latent[(unsigned)i]);
 			Bias[i] -= learningRate * delta[(unsigned)i];
 		};
 		for (int j = 0; j < nIn; j++)
@@ -128,14 +128,14 @@ double HiddenLayer::ComputeCost(const DataSet& dataset, double noise) const
 		auto image = hiddenLayers->Compute(dataset.Images()[n], this);
 		for (int i = 0; i < nIn; i++)
 			corrupted[(unsigned)i] = dist(hiddenLayers->RandomNumberGenerator) < noise ? 0 : image.get()[i];
-		ActivationFunction::Sigmoid()->Normal([&](int j)
+		Activation([&](int j)
 		{
 			double ret = 0;
 			for (int i = 0; i < nIn; i++)
 				ret += corrupted[(unsigned)i] * Weight[j][i];
 			return ret + Bias[j];
 		}, latent.get(), nOut);
-		ActivationFunction::Sigmoid()->Normal([&](int j)
+		Activation([&](int j)
 		{
 			double ret = 0;
 			for (int i = 0; i < nOut; i++)

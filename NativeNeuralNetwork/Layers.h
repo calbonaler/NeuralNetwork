@@ -48,8 +48,7 @@ protected:
 	/// <returns>勾配ベクトルの要素。</returns>
 	virtual double GetDelta(double output, double upperInfo) const = 0;
 
-private:
-	const ActivationFunction::NormalForm activation;
+	const ActivationFunction::NormalForm Activation;
 };
 
 class HiddenLayerCollection;
