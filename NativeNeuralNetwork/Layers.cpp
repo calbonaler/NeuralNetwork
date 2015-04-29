@@ -1,4 +1,4 @@
-#include <cassert>
+﻿#include <cassert>
 #include <memory>
 #include "Layers.h"
 
@@ -10,7 +10,7 @@ Layer::Layer(unsigned int nIn, unsigned int nOut, const ActivationFunction::Norm
 		Weight[i] = Weight[i - 1] + nOut;
 }
 
-Layer::‾Layer()
+Layer::~Layer()
 {
 	delete[] Weight[0];
 	delete[] Weight;
@@ -65,7 +65,7 @@ HiddenLayer::HiddenLayer(unsigned int nIn, unsigned int nOut, const ActivationFu
 	}
 }
 
-HiddenLayer::‾HiddenLayer()
+HiddenLayer::~HiddenLayer()
 {
 	delete[] visibleBias;
 }

@@ -1,4 +1,4 @@
-#include "Functions.h"
+﻿#include "Functions.h"
 #include "LearningSet.h"
 #include <vector>
 #include <memory>

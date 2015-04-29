@@ -1,4 +1,4 @@
-#include "StackedDenoisingAutoEncoder.h"
+﻿#include "StackedDenoisingAutoEncoder.h"
 
 void StackedDenoisingAutoEncoder::SetLogisticRegressionLayer(unsigned int neurons)
 {
