@@ -20,7 +20,7 @@ Layer::~Layer()
 std::unique_ptr<double[]> Layer::Compute(const double* input) const
 {
 	assert(input);
-	std::unique_ptr<double[]> output = std::make_unique<double[]>((unsigned)nOut);
+	std::unique_ptr<double[]> output = std::unique_ptr<double[]>(new double[(unsigned)nOut]);
 	Activation([&](int j)
 	{
 		double ret = 0;
@@ -35,7 +35,7 @@ std::unique_ptr<double[]> Layer::Learn(const double* input, const double* output
 {
 	assert(input);
 	assert(output);
-	std::unique_ptr<double[]> lowerInfo = std::make_unique<double[]>((unsigned)nIn);
+	std::unique_ptr<double[]> lowerInfo = std::unique_ptr<double[]>(new double[(unsigned)nIn]);
 	for (int i = 0; i < nOut; i++)
 	{
 		auto deltaI = GetDelta(output[i], upperInfo(i));
@@ -73,10 +73,10 @@ HiddenLayer::~HiddenLayer()
 double HiddenLayer::Train(const DataSet& dataset, double learningRate, double noise)
 {
 	std::uniform_real_distribution<double> dist(0, 1);
-	auto corrupted = std::make_unique<double[]>((unsigned)nIn);
-	auto latent = std::make_unique<double[]>((unsigned)nOut);
-	auto reconstructed = std::make_unique<double[]>((unsigned)nIn);
-	auto delta = std::make_unique<double[]>((unsigned)nOut);
+	auto corrupted = std::unique_ptr<double[]>(new double[(unsigned)nIn]);
+	auto latent = std::unique_ptr<double[]>(new double[(unsigned)nOut]);
+	auto reconstructed = std::unique_ptr<double[]>(new double[(unsigned)nIn]);
+	auto delta = std::unique_ptr<double[]>(new double[(unsigned)nOut]);
 	double cost = 0;
 	for (unsigned int n = 0; n < dataset.Count(); n++)
 	{
@@ -119,9 +119,9 @@ double HiddenLayer::Train(const DataSet& dataset, double learningRate, double no
 double HiddenLayer::ComputeCost(const DataSet& dataset, double noise) const
 {
 	std::uniform_real_distribution<double> dist(0, 1);
-	auto corrupted = std::make_unique<double[]>((unsigned)nIn);
-	auto latent = std::make_unique<double[]>((unsigned)nOut);
-	auto reconstructed = std::make_unique<double[]>((unsigned)nIn);
+	auto corrupted = std::unique_ptr<double[]>(new double[(unsigned)nIn]);
+	auto latent = std::unique_ptr<double[]>(new double[(unsigned)nOut]);
+	auto reconstructed = std::unique_ptr<double[]>(new double[(unsigned)nIn]);
 	double cost = 0;
 	for (unsigned int n = 0; n < dataset.Count(); n++)
 	{
@@ -166,18 +166,18 @@ void HiddenLayerCollection::Set(size_t index, int neurons)
 		throw std::out_of_range("index");
 	if (index == items.size())
 	{
-		items.push_back(std::make_unique<HiddenLayer>(nextLayerInputUnits, neurons, ActivationFunction::Sigmoid(), this));
+		items.push_back(std::unique_ptr<HiddenLayer>(new HiddenLayer(nextLayerInputUnits, neurons, ActivationFunction::Sigmoid(), this)));
 		nextLayerInputUnits = neurons;
 		return;
 	}
-	items[index] = std::make_unique<HiddenLayer>(items[index]->nIn, neurons, ActivationFunction::Sigmoid(), this);
+	items[index] = std::unique_ptr<HiddenLayer>(new HiddenLayer(items[index]->nIn, neurons, ActivationFunction::Sigmoid(), this));
 	if (index < items.size() - 1)
-		items[index + 1] = std::make_unique<HiddenLayer>(neurons, items[index + 1]->nOut, ActivationFunction::Sigmoid(), this);
+		items[index + 1] = std::unique_ptr<HiddenLayer>(new HiddenLayer(neurons, items[index + 1]->nOut, ActivationFunction::Sigmoid(), this));
 }
 
 int LogisticRegressionLayer::Predict(const double* input) const
 {
-	auto computed = std::unique_ptr<double[]>(Compute(input));
+	auto computed = Compute(input);
 	int maxIndex = 0;
 	for (int i = 1; i < nOut; i++)
 	{

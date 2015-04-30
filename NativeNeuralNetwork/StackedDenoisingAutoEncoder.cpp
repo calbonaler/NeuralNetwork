@@ -2,13 +2,13 @@
 
 void StackedDenoisingAutoEncoder::SetLogisticRegressionLayer(unsigned int neurons)
 {
-	outputLayer = std::make_unique<LogisticRegressionLayer>(HiddenLayers[HiddenLayers.Count() - 1].nOut, neurons);
+	outputLayer = std::unique_ptr<LogisticRegressionLayer>(new LogisticRegressionLayer(HiddenLayers[HiddenLayers.Count() - 1].nOut, neurons));
 	HiddenLayers.Freeze();
 }
 
 void StackedDenoisingAutoEncoder::FineTune(const DataSet& dataset, double learningRate)
 {
-	std::unique_ptr<unique_or_raw_array<double>[]> inputs = std::make_unique<unique_or_raw_array<double>[]>(HiddenLayers.Count() + 2);
+	auto inputs = std::unique_ptr<unique_or_raw_array<double>[]>(new unique_or_raw_array<double>[HiddenLayers.Count() + 2]);
 	for (unsigned int d = 0; d < dataset.Count(); d++)
 	{
 		inputs[0] = dataset.Images()[d];
