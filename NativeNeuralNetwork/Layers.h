@@ -16,7 +16,7 @@ public:
 	/// <summary>この層の結合重みを示します。</summary>
 	double** const Weight;
 	/// <summary>この層のバイアスを示します。</summary>
-	std::unique_ptr<double[]> Bias;
+	std::vector<double> Bias;
 	/// <summary>この層の入力ユニット数を示します。</summary>
 	int const nIn;
 	/// <summary>この層の出力ユニット数を示します。</summary>
@@ -25,7 +25,7 @@ public:
 	/// <summary>この層の入力に対する出力を計算します。</summary>
 	/// <param name="input">層に入力するベクトルを指定します。</param>
 	/// <returns>この層の出力を示すベクトル。</returns>
-	std::unique_ptr<double[]> Compute(const double* input) const;
+	std::vector<double> Compute(const std::vector<double>& input) const;
 
 	/// <summary>この層の学習を行い、下位層の学習に必要な情報を返します。</summary>
 	/// <param name="input">この層への入力を示すベクトルを指定します。</param>
@@ -33,7 +33,7 @@ public:
 	/// <param name="upperInfo">上位層から得られた学習に必要な情報を指定します。この層が出力層の場合、これは教師信号になります。</param>
 	/// <param name="learningRate">結合重みとバイアスをどれほど更新するかを示す値を指定します。</param>
 	/// <returns>下位層の学習に必要な情報。</returns>
-	std::unique_ptr<double[]> Learn(const double* input, const double* output, Indexer upperInfo, double learningRate);
+	std::vector<double> Learn(const std::vector<double>& input, const std::vector<double>& output, const Indexer& upperInfo, double learningRate);
 
 protected:
 	/// <summary>入力されるニューロン数、この層のニューロン数、活性化関数を使用して、<see cref="Layer"/> クラスの新しいインスタンスを初期化します。</summary>
@@ -105,7 +105,7 @@ protected:
 private:
 	const ActivationFunction::DifferentiatedForm differentiatedActivation;
 	HiddenLayerCollection* const hiddenLayers;
-	std::unique_ptr<double[]> visibleBias;
+	std::vector<double> visibleBias;
 };
 
 /// <summary>隠れ層のコレクションを表します。</summary>
@@ -126,7 +126,7 @@ public:
 	/// <param name="input">最初の隠れ層に与える入力を指定します。</param>
 	/// <param name="stopLayer">入力ベクトルを計算する層を指定します。この引数は省略可能です。</param>
 	/// <returns>指定された層の入力ベクトル。層が指定されなかった場合は出力層の入力ベクトルを返します。</returns>
-	unique_or_raw_array<double> Compute(const double* input, const HiddenLayer* stopLayer) const;
+	referenceable_vector<double> Compute(const std::vector<double>& input, const HiddenLayer* stopLayer) const;
 
 	/// <summary>指定されたインデックスの隠れ層のニューロン数を変更します。このメソッドは隠れ層を追加することもできます。</summary>
 	/// <param name="index">ニューロン数を変更する隠れ層のインデックスを指定します。</param>
@@ -169,7 +169,7 @@ public:
 	/// <summary>確率が最大となるクラスを推定します。</summary>
 	/// <param name="input">層に入力するベクトルを指定します。</param>
 	/// <returns>推定された確率最大のクラスのインデックス。</returns>
-	int Predict(const double* input) const;
+	int Predict(const std::vector<double>& input) const;
 
 protected:
 	/// <summary>この層の線形計算の結果に対するニューラルネットワークのコストの勾配ベクトル (Delta) の要素を計算します。</summary>

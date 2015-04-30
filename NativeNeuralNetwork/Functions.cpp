@@ -4,55 +4,58 @@
 
 const ActivationFunction* ActivationFunction::Sigmoid()
 {
-	static ActivationFunction sigmoid([](const Indexer& x, double* res, int len)
+	static ActivationFunction sigmoid([](const Indexer& x, std::vector<double>& res)
 	{
+		int length = (int)res.size();
 #pragma omp parallel for
-		for (int i = 0; i < len; i++)
-			res[i] = 1 / (1 + exp(-x(i)));
+		for (int i = 0; i < length; i++)
+			res[(unsigned)i] = 1 / (1 + exp(-x(i)));
 	}, [](double y) { return y * (1 - y); });
 	return &sigmoid;
 }
 
-void ActivationFunction::Identity(const Indexer& input, double* result, int length)
+void ActivationFunction::Identity(const Indexer& input, std::vector<double>& result)
 {
+	int length = (int)result.size();
 #pragma omp parallel for
 	for (int i = 0; i < length; i++)
-		result[i] = input(i);
+		result[(unsigned)i] = input(i);
 }
 
-void ActivationFunction::SoftMax(const Indexer& input, double* result, int length)
+void ActivationFunction::SoftMax(const Indexer& input, std::vector<double>& result)
 {
+	int length = (int)result.size();
 	double max = -std::numeric_limits<double>::infinity();
 	for (int i = 0; i < length; i++)
-		max = fmax(result[i] = input(i), max);
+		max = fmax(result[(unsigned)i] = input(i), max);
 	double sum = 0;
 	for (int i = 0; i < length; i++)
-		sum += result[i] = exp(result[i] - max);
+		sum += result[(unsigned)i] = exp(result[(unsigned)i] - max);
 #pragma omp parallel for
 	for (int i = 0; i < length; i++)
-		result[i] /= sum;
+		result[(unsigned)i] /= sum;
 }
 
-double ErrorFunction::BiClassCrossEntropy(const double* source, const double* target, int length)
+double ErrorFunction::BiClassCrossEntropy(const std::vector<double>& source, const std::vector<double>& target)
 {
 	double sum = 0;
-	for (int i = 0; i < length; i++)
+	for (unsigned int i = 0; i < source.size(); i++)
 		sum -= target[i] * log(source[i] + 1e-10) + (1 - target[i]) * log(1 - source[i] + 1e-10);
 	return sum;
 }
 
-double ErrorFunction::MultiClassCrossEntropy(const double* source, const double* target, int length)
+double ErrorFunction::MultiClassCrossEntropy(const std::vector<double>& source, const std::vector<double>& target)
 {
 	double sum = 0;
-	for (int i = 0; i < length; i++)
+	for (unsigned int i = 0; i < source.size(); i++)
 		sum -= target[i] * log(source[i] + 1e-10);
 	return sum;
 }
 
-double ErrorFunction::LeastSquaresMethod(const double* source, const double* target, int length)
+double ErrorFunction::LeastSquaresMethod(const std::vector<double>& source, const std::vector<double>& target)
 {
 	double sum = 0;
-	for (int i = 0; i < length; i++)
+	for (unsigned int i = 0; i < source.size(); i++)
 	{
 		double x = source[i] - target[i];
 		sum += x * x;

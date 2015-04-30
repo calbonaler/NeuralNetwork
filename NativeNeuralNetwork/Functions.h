@@ -5,7 +5,7 @@
 class ActivationFunction
 {
 public:
-	typedef std::function<void(const Indexer&, double*, int)> NormalForm;
+	typedef std::function<void(const Indexer&, std::vector<double>&)> NormalForm;
 	typedef std::function<double(double)> DifferentiatedForm;
 
 	FORCE_UNCOPYABLE(ActivationFunction);
@@ -14,8 +14,8 @@ public:
 	const DifferentiatedForm Differentiated;
 
 	static const ActivationFunction* Sigmoid();
-	static void Identity(const Indexer& input, double* result, int length);
-	static void SoftMax(const Indexer& input, double* result, int length);
+	static void Identity(const Indexer& input, std::vector<double>& result);
+	static void SoftMax(const Indexer& input, std::vector<double>& result);
 
 private:
 	ActivationFunction(const NormalForm& normal, const DifferentiatedForm& differentiated) : Normal(normal), Differentiated(differentiated) { }
@@ -23,7 +23,7 @@ private:
 
 namespace ErrorFunction
 {
-	double BiClassCrossEntropy(const double* source, const double* target, int length);
-	double MultiClassCrossEntropy(const double* source, const double* target, int length);
-	double LeastSquaresMethod(const double* source, const double* target, int length);
+	double BiClassCrossEntropy(const std::vector<double>& source, const std::vector<double>& target);
+	double MultiClassCrossEntropy(const std::vector<double>& source, const std::vector<double>& target);
+	double LeastSquaresMethod(const std::vector<double>& source, const std::vector<double>& target);
 }

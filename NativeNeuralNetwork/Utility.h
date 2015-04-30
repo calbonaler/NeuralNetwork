@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <functional>
+#include <vector>
 
 #define FORCE_UNCOPYABLE(T) \
 	void operator=(const T&) = delete; \
@@ -11,41 +12,36 @@ template <class T> inline T* pointer_cast(void* pointer) { return static_cast<T*
 
 typedef std::function<double(int)> Indexer;
 
-template <class T> class unique_or_raw_array
+template <class T> class referenceable_vector
 {
 public:
-	FORCE_UNCOPYABLE(unique_or_raw_array);
+	referenceable_vector() : reference_target(nullptr) { }
+	referenceable_vector(const std::vector<T>& reference) : reference_target(&reference) { }
+	referenceable_vector(std::vector<T>&& instance) : reference_target(nullptr), target(std::move(instance)) { }
+	referenceable_vector(referenceable_vector&& right) : reference_target(right.reference_target), target(std::move(right.target)) { }
 
-	unique_or_raw_array() : unique(), raw(nullptr) { }
-	unique_or_raw_array(unique_or_raw_array&& right) : unique(std::move(right.unique)), raw(right.raw) { }
-	unique_or_raw_array(std::unique_ptr<T[]>&& unique) : unique(std::move(unique)), raw(nullptr) { }
-	unique_or_raw_array(const T* raw) : unique(), raw(raw) { }
-
-	const T* get() { return unique ? unique.get() : raw; }
-
-	unique_or_raw_array& operator=(unique_or_raw_array&& right)
+	referenceable_vector& operator=(const std::vector<T>& reference)
 	{
-		if (this != &right)
-		{
-			unique = std::move(right.unique);
-			raw = right.raw;
-		}
+		reference_target = &reference;
+		std::vector<T>().swap(target);
 		return *this;
 	}
-	unique_or_raw_array& operator=(const T* raw)
+	referenceable_vector& operator=(std::vector<T>&& instance)
 	{
-		unique = nullptr;
-		this->raw = raw;
+		reference_target = nullptr;
+		target = std::move(instance);
 		return *this;
 	}
-	unique_or_raw_array& operator=(std::unique_ptr<T[]>&& unique)
+	referenceable_vector& operator=(referenceable_vector&& right)
 	{
-		this->unique = std::move(unique);
-		raw = nullptr;
+		reference_target = right.reference_target;
+		target = std::move(right.target);
 		return *this;
 	}
+
+	const std::vector<T>& get() { return reference_target ? *reference_target : target; }
 
 private:
-	std::unique_ptr<T[]> unique;
-	const T* raw;
+	const std::vector<T>* reference_target;
+	std::vector<T> target;
 };

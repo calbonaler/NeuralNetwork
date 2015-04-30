@@ -8,7 +8,7 @@ void StackedDenoisingAutoEncoder::SetLogisticRegressionLayer(int neurons)
 
 void StackedDenoisingAutoEncoder::FineTune(const DataSet& dataset, double learningRate)
 {
-	auto inputs = std::unique_ptr<unique_or_raw_array<double>[]>(new unique_or_raw_array<double>[HiddenLayers.Count() + 2]);
+	auto inputs = std::vector<referenceable_vector<double>>(HiddenLayers.Count() + 2);
 	for (unsigned int d = 0; d < dataset.Count(); d++)
 	{
 		inputs[0] = dataset.Images()[d];
@@ -17,7 +17,7 @@ void StackedDenoisingAutoEncoder::FineTune(const DataSet& dataset, double learni
 			inputs[n + 1] = HiddenLayers[n].Compute(inputs[n].get());
 		inputs[n + 1] = outputLayer->Compute(inputs[n].get());
 		Indexer upperInfo = [&](int i) { return i == dataset.Labels()[d] ? 1.0 : 0.0; };
-		std::unique_ptr<double[]> lowerInfo(outputLayer->Learn(inputs[n].get(), inputs[n + 1].get(), upperInfo, learningRate));
+		std::vector<double> lowerInfo(outputLayer->Learn(inputs[n].get(), inputs[n + 1].get(), upperInfo, learningRate));
 		while (--n <= HiddenLayers.Count())
 		{
 			upperInfo = [&](int i) { return lowerInfo[(unsigned)i]; };

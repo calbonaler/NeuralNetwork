@@ -8,61 +8,37 @@ DataSet& DataSet::operator=(DataSet&& dataset)
 {
 	if (this != &dataset)
 	{
-		Deallocate();
-		labels = dataset.labels;
-		images = dataset.images;
+		labels = std::move(dataset.labels);
+		images = std::move(dataset.images);
 		row = dataset.row;
 		column = dataset.column;
-		count = dataset.count;
 
-		dataset.labels = nullptr;
-		dataset.images = nullptr;
 		dataset.row = 0;
 		dataset.column = 0;
-		dataset.count = 0;
 	}
 	return *this;
 }
 
-void DataSet::CopyFrom(const DataSet& dataset, unsigned int count)
+void DataSet::CopyFrom(const DataSet& dataset, size_t count)
 {
 	assert(count > 0 && count <= dataset.count);
 	Allocate(count, dataset.row, dataset.column);
 	for (unsigned int i = 0; i < count; i++)
 	{
 		labels[i] = dataset.labels[i];
-		std::copy(dataset.images[i], dataset.images[i] + row * column, images[i]);
+		std::copy(dataset.images[i].begin(), dataset.images[i].end(), images[i].begin());
 	}
 }
 
-void DataSet::Allocate(unsigned int length, int newRow, int newColumn)
+void DataSet::Allocate(size_t length, int newRow, int newColumn)
 {
-	assert(length > 0);
 	assert(newRow * newColumn > 0);
-	Deallocate();
-	labels = new int[length];
-	images = new double*[length];
-	for (unsigned int i = 0; i < length; i++)
-		images[i] = new double[(unsigned)(newRow * newColumn)];
+	labels.resize(length);
+	images.resize(length);
+	for (size_t i = 0; i < length; i++)
+		images[i].resize((unsigned)(newRow * newColumn));
 	row = newRow;
 	column = newColumn;
-	count = length;
-}
-
-void DataSet::Deallocate()
-{
-	delete[] labels;
-	labels = nullptr;
-	if (images)
-	{
-		for (unsigned int i = 0; i < count; i++)
-			delete[] images[i];
-		row = 0;
-		column = 0;
-		delete[] images;
-		images = nullptr;
-		count = 0;
-	}
 }
 
 inline uint32_t ReadInt32BigEndian(std::ifstream& stream)

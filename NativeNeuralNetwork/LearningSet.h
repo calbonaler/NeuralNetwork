@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include <string>
+#include <vector>
 #include "Utility.h"
 
 /// <summary>学習および識別に使用されるデータセットを表します。</summary>
@@ -8,30 +9,27 @@ class DataSet
 {
 public:
 	/// <summary><see cref="DataSet"/> クラスの新しいインスタンスを初期化します。</summary>
-	DataSet() : labels(nullptr), images(nullptr), count(0), row(0), column(0) { }
+	DataSet() : row(0), column(0) { }
 
 	/// <summary>指定されたデータセットのデータをコピーして、<see cref="DataSet"/> クラスの新しいインスタンスを初期化します。</summary>
 	/// <param name="dataset">コピー元のデータセットを指定します。</param>
-	DataSet(const DataSet& dataset) : labels(nullptr), images(nullptr), count(0), row(0), column(0) { CopyFrom(dataset, dataset.count); }
+	DataSet(const DataSet& dataset) : row(0), column(0) { CopyFrom(dataset, dataset.Count()); }
 
 	/// <summary>指定されたデータセットのデータを移動して、<see cref="DataSet"/> クラスの新しいインスタンスを初期化します。</summary>
 	/// <param name="dataset">移動元のデータセットを指定します。</param>
-	DataSet(DataSet&& dataset) : labels(nullptr), images(nullptr), count(0), row(0), column(0) { *this = std::move(dataset); }
+	DataSet(DataSet&& dataset) : row(0), column(0) { *this = std::move(dataset); }
 
 	/// <summary>指定されたデータセットのデータの一部を使用して、<see cref="DataSet"/> クラスの新しいインスタンスを初期化します。</summary>
 	/// <param name="dataset">基になるデータセットを指定します。</param>
 	/// <param name="count"><paramref name="dataset"/> からこのデータセットにコピーされるデータ数を指定します。データは先頭からコピーされます。</param>
-	DataSet(const DataSet& dataset, unsigned int count) : labels(nullptr), images(nullptr), count(0), row(0), column(0) { CopyFrom(dataset, count); }
-
-	/// <summary>このデータセットを破棄します。</summary>
-	~DataSet() { Deallocate(); }
+	DataSet(const DataSet& dataset, size_t count) : row(0), column(0) { CopyFrom(dataset, count); }
 
 	/// <summary>指定されたデータセットからこのデータセットにデータをコピーします。</summary>
 	/// <param name="dataset">データのコピー元のデータセットを指定します。</param>
 	/// <returns>このデータセットへの参照。</returns>
 	DataSet& operator=(const DataSet& dataset)
 	{
-		CopyFrom(dataset, dataset.count);
+		CopyFrom(dataset, dataset.Count());
 		return *this;
 	}
 
@@ -43,16 +41,16 @@ public:
 	/// <summary>指定されたデータセットの一部をこのデータセットにコピーします。</summary>
 	/// <param name="dataset">基になるデータセットを指定します。</param>
 	/// <param name="count"><paramref name="dataset"/> からこのデータセットにコピーされるデータ数を指定します。データは先頭からコピーされます。</param>
-	void CopyFrom(const DataSet& dataset, unsigned int count);
+	void CopyFrom(const DataSet& dataset, size_t count);
 
 	/// <summary>画像およびラベルの保存領域を確保します。</summary>
 	/// <param name="length">総パターン数を指定します。</param>
 	/// <param name="newRow">画像の垂直方向の長さを指定します。</param>
 	/// <param name="newColumn">画像の水平方向の長さを指定します。</param>
-	void Allocate(unsigned int length, int newRow, int newColumn);
+	void Allocate(size_t length, int newRow, int newColumn);
 
 	/// <summary>総パターン数を取得します。</summary>
-	unsigned int Count() const { return count; }
+	size_t Count() const { return labels.size(); }
 
 	/// <summary>画像の垂直方向の長さを取得します。</summary>
 	int Row() const { return row; }
@@ -61,25 +59,22 @@ public:
 	int Column() const { return column; }
 
 	/// <summary>確保されたラベルの保存領域へのポインタを返します。</summary>
-	int* Labels() { return labels; }
+	std::vector<int>& Labels() { return labels; }
 
 	/// <summary>確保されたラベルの保存領域へのポインタを返します。</summary>
-	const int* Labels() const { return labels; }
+	const std::vector<int>& Labels() const { return labels; }
 
 	/// <summary>確保された画像の保存領域へのポインタを返します。</summary>
-	double** Images() { return images; }
+	std::vector<std::vector<double>>& Images() { return images; }
 
 	/// <summary>確保された画像の保存領域へのポインタを返します。</summary>
-	double** const Images() const { return images; }
+	const std::vector<std::vector<double>>& Images() const { return images; }
 
 private:
 	int row;
 	int column;
-	unsigned int count;
-	int* labels;
-	double** images;
-
-	void Deallocate();
+	std::vector<int> labels;
+	std::vector<std::vector<double>> images;
 };
 
 /// <summary>学習データおよび識別データを格納するセットを表します。</summary>

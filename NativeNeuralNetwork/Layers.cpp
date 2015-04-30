@@ -2,7 +2,7 @@
 #include <memory>
 #include "Layers.h"
 
-Layer::Layer(int nIn, int nOut, const ActivationFunction::NormalForm& activation) : nIn(nIn), nOut(nOut), Weight(new double*[(unsigned)nOut]), Bias(new double[(unsigned)nOut]()), Activation(activation)
+Layer::Layer(int nIn, int nOut, const ActivationFunction::NormalForm& activation) : nIn(nIn), nOut(nOut), Weight(new double*[(unsigned)nOut]), Bias((unsigned)nOut, 0.0), Activation(activation)
 {
 	assert(nIn * nOut > 0);
 	Weight[0] = new double[(unsigned)(nIn * nOut)]();
@@ -16,39 +16,36 @@ Layer::~Layer()
 	delete[] Weight;
 }
 
-std::unique_ptr<double[]> Layer::Compute(const double* input) const
+std::vector<double> Layer::Compute(const std::vector<double>& input) const
 {
-	assert(input);
-	std::unique_ptr<double[]> output = std::unique_ptr<double[]>(new double[(unsigned)nOut]);
+	std::vector<double> output = std::vector<double>((unsigned)nOut);
 	Activation([&](int j)
 	{
 		double ret = 0;
 		for (int k = 0; k < nIn; k++)
-			ret += input[k] * Weight[j][k];
+			ret += input[(unsigned)k] * Weight[j][k];
 		return ret + Bias[(unsigned)j];
-	}, output.get(), nOut);
-	return output;
+	}, output);
+	return std::move(output);
 }
 
-std::unique_ptr<double[]> Layer::Learn(const double* input, const double* output, Indexer upperInfo, double learningRate)
+std::vector<double> Layer::Learn(const std::vector<double>& input, const std::vector<double>& output, const Indexer& upperInfo, double learningRate)
 {
-	assert(input);
-	assert(output);
-	std::unique_ptr<double[]> lowerInfo = std::unique_ptr<double[]>(new double[(unsigned)nIn]);
+	std::vector<double> lowerInfo = std::vector<double>((unsigned)nIn, 0.0);
 	for (int i = 0; i < nOut; i++)
 	{
-		auto deltaI = GetDelta(output[i], upperInfo(i));
+		auto deltaI = GetDelta(output[(unsigned)i], upperInfo(i));
 		for (int j = 0; j < nIn; j++)
 		{
 			lowerInfo[(unsigned)j] += Weight[i][j] * deltaI;
-			Weight[i][j] -= learningRate * (deltaI * input[j]);
+			Weight[i][j] -= learningRate * (deltaI * input[(unsigned)j]);
 		}
 		Bias[(unsigned)i] -= learningRate * deltaI;
 	}
-	return lowerInfo;
+	return std::move(lowerInfo);
 }
 
-HiddenLayer::HiddenLayer(int nIn, int nOut, const ActivationFunction* activation, HiddenLayerCollection* hiddenLayers) : Layer(nIn, nOut, activation->Normal), differentiatedActivation(activation->Differentiated), visibleBias(new double[(unsigned)nIn]()), hiddenLayers(hiddenLayers)
+HiddenLayer::HiddenLayer(int nIn, int nOut, const ActivationFunction* activation, HiddenLayerCollection* hiddenLayers) : Layer(nIn, nOut, activation->Normal), differentiatedActivation(activation->Differentiated), visibleBias((unsigned)nIn, 0.0), hiddenLayers(hiddenLayers)
 {
 	assert(activation);
 	assert(hiddenLayers);
@@ -67,44 +64,44 @@ HiddenLayer::HiddenLayer(int nIn, int nOut, const ActivationFunction* activation
 double HiddenLayer::Train(const DataSet& dataset, double learningRate, double noise)
 {
 	std::uniform_real_distribution<double> dist(0, 1);
-	auto corrupted = std::unique_ptr<double[]>(new double[(unsigned)nIn]);
-	auto latent = std::unique_ptr<double[]>(new double[(unsigned)nOut]);
-	auto reconstructed = std::unique_ptr<double[]>(new double[(unsigned)nIn]);
-	auto delta = std::unique_ptr<double[]>(new double[(unsigned)nOut]);
+	auto corrupted = std::vector<double>((unsigned)nIn);
+	auto latent = std::vector<double>((unsigned)nOut);
+	auto reconstructed = std::vector<double>((unsigned)nIn);
+	auto delta = std::vector<double>((unsigned)nOut);
 	double cost = 0;
 	for (unsigned int n = 0; n < dataset.Count(); n++)
 	{
 		auto image = hiddenLayers->Compute(dataset.Images()[n], this);
 		for (int i = 0; i < nIn; i++)
-			corrupted[(unsigned)i] = dist(hiddenLayers->RandomNumberGenerator) < noise ? 0 : image.get()[i];
+			corrupted[(unsigned)i] = dist(hiddenLayers->RandomNumberGenerator) < noise ? 0 : image.get()[(unsigned)i];
 		Activation([&](int j)
 		{
 			double ret = 0;
 			for (int i = 0; i < nIn; i++)
 				ret += corrupted[(unsigned)i] * Weight[j][i];
 			return ret + Bias[(unsigned)j];
-		}, latent.get(), nOut);
+		}, latent);
 		Activation([&](int j)
 		{
 			double ret = 0;
 			for (int i = 0; i < nOut; i++)
 				ret += latent[(unsigned)i] * Weight[i][j];
 			return ret + visibleBias[(unsigned)j];
-		}, reconstructed.get(), nIn);
-		cost += ErrorFunction::BiClassCrossEntropy(image.get(), reconstructed.get(), nIn);
+		}, reconstructed);
+		cost += ErrorFunction::BiClassCrossEntropy(image.get(), reconstructed);
 		for (int i = 0; i < nOut; i++)
 		{
 			delta[(unsigned)i] = 0;
 			for (int j = 0; j < nIn; j++)
-				delta[(unsigned)i] += (reconstructed[(unsigned)j] - image.get()[j]) * Weight[i][j];
+				delta[(unsigned)i] += (reconstructed[(unsigned)j] - image.get()[(unsigned)j]) * Weight[i][j];
 			delta[(unsigned)i] *= differentiatedActivation(latent[(unsigned)i]);
 			Bias[(unsigned)i] -= learningRate * delta[(unsigned)i];
 		};
 		for (int j = 0; j < nIn; j++)
 		{
 			for (int i = 0; i < nOut; i++)
-				Weight[i][j] -= learningRate * ((reconstructed[(unsigned)j] - image.get()[j]) * latent[(unsigned)i] + delta[(unsigned)i] * corrupted[(unsigned)j]);
-			visibleBias[(unsigned)j] -= learningRate * (reconstructed[(unsigned)j] - image.get()[j]);
+				Weight[i][j] -= learningRate * ((reconstructed[(unsigned)j] - image.get()[(unsigned)j]) * latent[(unsigned)i] + delta[(unsigned)i] * corrupted[(unsigned)j]);
+			visibleBias[(unsigned)j] -= learningRate * (reconstructed[(unsigned)j] - image.get()[(unsigned)j]);
 		};
 	}
 	return cost / dataset.Count();
@@ -113,42 +110,39 @@ double HiddenLayer::Train(const DataSet& dataset, double learningRate, double no
 double HiddenLayer::ComputeCost(const DataSet& dataset, double noise) const
 {
 	std::uniform_real_distribution<double> dist(0, 1);
-	auto corrupted = std::unique_ptr<double[]>(new double[(unsigned)nIn]);
-	auto latent = std::unique_ptr<double[]>(new double[(unsigned)nOut]);
-	auto reconstructed = std::unique_ptr<double[]>(new double[(unsigned)nIn]);
+	auto corrupted = std::vector<double>((unsigned)nIn);
+	auto latent = std::vector<double>((unsigned)nOut);
+	auto reconstructed = std::vector<double>((unsigned)nIn);
 	double cost = 0;
 	for (unsigned int n = 0; n < dataset.Count(); n++)
 	{
 		auto image = hiddenLayers->Compute(dataset.Images()[n], this);
 		for (int i = 0; i < nIn; i++)
-			corrupted[(unsigned)i] = dist(hiddenLayers->RandomNumberGenerator) < noise ? 0 : image.get()[i];
+			corrupted[(unsigned)i] = dist(hiddenLayers->RandomNumberGenerator) < noise ? 0 : image.get()[(unsigned)i];
 		Activation([&](int j)
 		{
 			double ret = 0;
 			for (int i = 0; i < nIn; i++)
 				ret += corrupted[(unsigned)i] * Weight[j][i];
 			return ret + Bias[(unsigned)j];
-		}, latent.get(), nOut);
+		}, latent);
 		Activation([&](int j)
 		{
 			double ret = 0;
 			for (int i = 0; i < nOut; i++)
 				ret += latent[(unsigned)i] * Weight[i][j];
 			return ret + visibleBias[(unsigned)j];
-		}, reconstructed.get(), nIn);
-		cost += ErrorFunction::BiClassCrossEntropy(image.get(), reconstructed.get(), nIn);
+		}, reconstructed);
+		cost += ErrorFunction::BiClassCrossEntropy(image.get(), reconstructed);
 	}
 	return cost / dataset.Count();
 }
 
-unique_or_raw_array<double> HiddenLayerCollection::Compute(const double* input, const HiddenLayer* stopLayer) const
+referenceable_vector<double> HiddenLayerCollection::Compute(const std::vector<double>& input, const HiddenLayer* stopLayer) const
 {
-	unique_or_raw_array<double> result(input);
+	referenceable_vector<double> result(input);
 	for (unsigned int i = 0; i < items.size() && items[i].get() != stopLayer; i++)
-	{
-		result = items[i]->Compute(input);
-		input = (const double*)result.get();
-	}
+		result = items[i]->Compute(result.get());
 	return std::move(result);
 }
 
@@ -169,7 +163,7 @@ void HiddenLayerCollection::Set(size_t index, int neurons)
 		items[index + 1] = std::unique_ptr<HiddenLayer>(new HiddenLayer(neurons, items[index + 1]->nOut, ActivationFunction::Sigmoid(), this));
 }
 
-int LogisticRegressionLayer::Predict(const double* input) const
+int LogisticRegressionLayer::Predict(const std::vector<double>& input) const
 {
 	auto computed = Compute(input);
 	int maxIndex = 0;
