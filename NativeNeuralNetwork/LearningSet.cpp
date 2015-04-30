@@ -6,18 +6,21 @@
 
 DataSet& DataSet::operator=(DataSet&& dataset)
 {
-	Deallocate();
-	labels = dataset.labels;
-	images = dataset.images;
-	row = dataset.row;
-	column = dataset.column;
-	count = dataset.count;
+	if (this != &dataset)
+	{
+		Deallocate();
+		labels = dataset.labels;
+		images = dataset.images;
+		row = dataset.row;
+		column = dataset.column;
+		count = dataset.count;
 
-	dataset.labels = nullptr;
-	dataset.images = nullptr;
-	dataset.row = 0;
-	dataset.column = 0;
-	dataset.count = 0;
+		dataset.labels = nullptr;
+		dataset.images = nullptr;
+		dataset.row = 0;
+		dataset.column = 0;
+		dataset.count = 0;
+	}
 	return *this;
 }
 

@@ -1,6 +1,6 @@
 ﻿#include "StackedDenoisingAutoEncoder.h"
 
-void StackedDenoisingAutoEncoder::SetLogisticRegressionLayer(unsigned int neurons)
+void StackedDenoisingAutoEncoder::SetLogisticRegressionLayer(int neurons)
 {
 	outputLayer = std::unique_ptr<LogisticRegressionLayer>(new LogisticRegressionLayer(HiddenLayers[HiddenLayers.Count() - 1].nOut, neurons));
 	HiddenLayers.Freeze();

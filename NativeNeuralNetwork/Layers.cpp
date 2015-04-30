@@ -14,7 +14,6 @@ Layer::~Layer()
 {
 	delete[] Weight[0];
 	delete[] Weight;
-	delete[] Bias;
 }
 
 std::unique_ptr<double[]> Layer::Compute(const double* input) const
@@ -26,7 +25,7 @@ std::unique_ptr<double[]> Layer::Compute(const double* input) const
 		double ret = 0;
 		for (int k = 0; k < nIn; k++)
 			ret += input[k] * Weight[j][k];
-		return ret + Bias[j];
+		return ret + Bias[(unsigned)j];
 	}, output.get(), nOut);
 	return output;
 }
@@ -44,7 +43,7 @@ std::unique_ptr<double[]> Layer::Learn(const double* input, const double* output
 			lowerInfo[(unsigned)j] += Weight[i][j] * deltaI;
 			Weight[i][j] -= learningRate * (deltaI * input[j]);
 		}
-		Bias[i] -= learningRate * deltaI;
+		Bias[(unsigned)i] -= learningRate * deltaI;
 	}
 	return lowerInfo;
 }
@@ -65,11 +64,6 @@ HiddenLayer::HiddenLayer(int nIn, int nOut, const ActivationFunction* activation
 	}
 }
 
-HiddenLayer::~HiddenLayer()
-{
-	delete[] visibleBias;
-}
-
 double HiddenLayer::Train(const DataSet& dataset, double learningRate, double noise)
 {
 	std::uniform_real_distribution<double> dist(0, 1);
@@ -88,14 +82,14 @@ double HiddenLayer::Train(const DataSet& dataset, double learningRate, double no
 			double ret = 0;
 			for (int i = 0; i < nIn; i++)
 				ret += corrupted[(unsigned)i] * Weight[j][i];
-			return ret + Bias[j];
+			return ret + Bias[(unsigned)j];
 		}, latent.get(), nOut);
 		Activation([&](int j)
 		{
 			double ret = 0;
 			for (int i = 0; i < nOut; i++)
 				ret += latent[(unsigned)i] * Weight[i][j];
-			return ret + visibleBias[j];
+			return ret + visibleBias[(unsigned)j];
 		}, reconstructed.get(), nIn);
 		cost += ErrorFunction::BiClassCrossEntropy(image.get(), reconstructed.get(), nIn);
 		for (int i = 0; i < nOut; i++)
@@ -104,13 +98,13 @@ double HiddenLayer::Train(const DataSet& dataset, double learningRate, double no
 			for (int j = 0; j < nIn; j++)
 				delta[(unsigned)i] += (reconstructed[(unsigned)j] - image.get()[j]) * Weight[i][j];
 			delta[(unsigned)i] *= differentiatedActivation(latent[(unsigned)i]);
-			Bias[i] -= learningRate * delta[(unsigned)i];
+			Bias[(unsigned)i] -= learningRate * delta[(unsigned)i];
 		};
 		for (int j = 0; j < nIn; j++)
 		{
 			for (int i = 0; i < nOut; i++)
 				Weight[i][j] -= learningRate * ((reconstructed[(unsigned)j] - image.get()[j]) * latent[(unsigned)i] + delta[(unsigned)i] * corrupted[(unsigned)j]);
-			visibleBias[j] -= learningRate * (reconstructed[(unsigned)j] - image.get()[j]);
+			visibleBias[(unsigned)j] -= learningRate * (reconstructed[(unsigned)j] - image.get()[j]);
 		};
 	}
 	return cost / dataset.Count();
@@ -133,14 +127,14 @@ double HiddenLayer::ComputeCost(const DataSet& dataset, double noise) const
 			double ret = 0;
 			for (int i = 0; i < nIn; i++)
 				ret += corrupted[(unsigned)i] * Weight[j][i];
-			return ret + Bias[j];
+			return ret + Bias[(unsigned)j];
 		}, latent.get(), nOut);
 		Activation([&](int j)
 		{
 			double ret = 0;
 			for (int i = 0; i < nOut; i++)
 				ret += latent[(unsigned)i] * Weight[i][j];
-			return ret + visibleBias[j];
+			return ret + visibleBias[(unsigned)j];
 		}, reconstructed.get(), nIn);
 		cost += ErrorFunction::BiClassCrossEntropy(image.get(), reconstructed.get(), nIn);
 	}

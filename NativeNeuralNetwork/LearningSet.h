@@ -119,9 +119,12 @@ public:
 	/// <returns>この <see cref="LearningSet"/> への参照。</returns>
 	LearningSet& operator=(LearningSet&& learningSet)
 	{
-		trainingData = std::move(learningSet.trainingData);
-		testData = std::move(learningSet.testData);
-		ClassCount = learningSet.ClassCount;
+		if (this != &learningSet)
+		{
+			trainingData = std::move(learningSet.trainingData);
+			testData = std::move(learningSet.testData);
+			ClassCount = learningSet.ClassCount;
+		}
 		return *this;
 	}
 
@@ -138,7 +141,7 @@ public:
 	const DataSet& TestData() const { return testData; }
 
 	/// <summary>このセットに格納されているパターンのクラス数を示します。</summary>
-	unsigned int ClassCount;
+	int ClassCount;
 
 private:
 	DataSet trainingData;

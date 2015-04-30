@@ -25,8 +25,11 @@ public:
 
 	unique_or_raw_array& operator=(unique_or_raw_array&& right)
 	{
-		unique = std::move(right.unique);
-		raw = right.raw;
+		if (this != &right)
+		{
+			unique = std::move(right.unique);
+			raw = right.raw;
+		}
 		return *this;
 	}
 	unique_or_raw_array& operator=(const T* raw)

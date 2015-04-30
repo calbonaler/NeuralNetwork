@@ -25,7 +25,7 @@ public:
 
 	/// <summary>この SDA の出力層のニューロン数を指定された値に設定します。</summary>
 	/// <param name="neurons">SDA の出力層のニューロン数を指定します。</param>
-	void SetLogisticRegressionLayer(unsigned int neurons);
+	void SetLogisticRegressionLayer(int neurons);
 
 	/// <summary>指定されたデータセットに対してファインチューニングを実行します。</summary>
 	/// <param name="dataset">ファインチューニングに使用されるデータセットを指定します。このデータにはデータ点とラベルが含まれます。</param>

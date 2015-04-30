@@ -16,7 +16,7 @@ public:
 	/// <summary>この層の結合重みを示します。</summary>
 	double** const Weight;
 	/// <summary>この層のバイアスを示します。</summary>
-	double* const Bias;
+	std::unique_ptr<double[]> Bias;
 	/// <summary>この層の入力ユニット数を示します。</summary>
 	int const nIn;
 	/// <summary>この層の出力ユニット数を示します。</summary>
@@ -82,9 +82,6 @@ public:
 	/// <param name="hiddenLayers">この隠れ層が所属している Stacked Denoising Auto-Encoder のすべての隠れ層を表すリストを指定します。</param>
 	HiddenLayer(int nIn, int nOut, const ActivationFunction* activation, HiddenLayerCollection* hiddenLayers);
 
-	/// <summary>この層を破棄します。</summary>
-	~HiddenLayer();
-
 	/// <summary>この層から雑音除去自己符号化器を構成し、指定されたデータセットを使用して訓練した結果のコストを返します。</summary>
 	/// <param name="dataset">訓練に使用するデータセットを指定します。</param>
 	/// <param name="learningRate">学習率を指定します。</param>
@@ -108,7 +105,7 @@ protected:
 private:
 	const ActivationFunction::DifferentiatedForm differentiatedActivation;
 	HiddenLayerCollection* const hiddenLayers;
-	double* const visibleBias;
+	std::unique_ptr<double[]> visibleBias;
 };
 
 /// <summary>隠れ層のコレクションを表します。</summary>
