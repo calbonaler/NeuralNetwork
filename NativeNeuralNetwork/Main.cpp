@@ -1,6 +1,4 @@
-﻿#include <iostream>
-#include <fstream>
-#include "StackedDenoisingAutoEncoder.h"
+﻿#include "StackedDenoisingAutoEncoder.h"
 
 void TestSdA(const LearningSet& datasets);
 
@@ -11,11 +9,11 @@ int main()
 }
 
 const int PreTrainingEpochs = 15;
-const double PreTrainingLearningRate = 0.001;
-const double PreTrainingCorruptionLevels[] { 0.1, 0.2, 0.3 };
+const ValueType PreTrainingLearningRate = static_cast<ValueType>(0.001);
+const Floating PreTrainingCorruptionLevels[] { static_cast<Floating>(0.1), static_cast<Floating>(0.2), static_cast<Floating>(0.3) };
 
 const int FineTuningEpochs = 100;
-const double FineTuningLearningRate = 0.01;
+const ValueType FineTuningLearningRate = static_cast<ValueType>(0.01);
 
 void TestSdA(const LearningSet& datasets)
 {
@@ -23,18 +21,18 @@ void TestSdA(const LearningSet& datasets)
 	std::ofstream log("Experiments (Variable Neurons).log", std::ios::out);
 	for (unsigned int i = 0; i < 3; i++)
 	{
-		for (int neurons = 100; neurons <= 100; neurons += 100)
+		for (unsigned int neurons = 100; neurons <= 100; neurons += 100)
 		{
 			sda.HiddenLayers.Set(i, neurons);
 			std::cout << "Number of neurons of layer " << i << " is " << neurons << std::endl;
 			std::cout << "... pre-training the model" << std::endl;
-			double costTrain = 0;
-			for (int epoch = 1; epoch <= PreTrainingEpochs; epoch++)
+			ValueType costTrain = 0;
+			for (unsigned int epoch = 1; epoch <= PreTrainingEpochs; epoch++)
 			{
 				costTrain = sda.HiddenLayers[i].Train(datasets.TrainingData(), PreTrainingLearningRate, PreTrainingCorruptionLevels[i]);
 				std::cout << "Pre-training layer " << i << ", epoch " << epoch << ", cost " << costTrain << std::endl;
 			}
-			auto costTest = sda.HiddenLayers[i].ComputeCost(datasets.TestData(), PreTrainingCorruptionLevels[i]);
+			ValueType costTest = sda.HiddenLayers[i].ComputeCost(datasets.TestData(), PreTrainingCorruptionLevels[i]);
 			std::cout << "Pre-training layer " << i << " complete with training cost " << costTrain << ", test cost " << costTest << std::endl;
 			log << i << ", " << neurons << ", " << costTrain << ", " << costTest << std::endl;
 		}
@@ -42,12 +40,12 @@ void TestSdA(const LearningSet& datasets)
 	
 	sda.SetLogisticRegressionLayer(datasets.ClassCount);
 	std::cout << "... finetunning the model" << std::endl;
-	auto testScore = std::numeric_limits<double>::infinity();
-	auto bestEpoch = 0;
-	for (int epoch = 1; epoch < FineTuningEpochs; epoch++)
+	Floating testScore = std::numeric_limits<Floating>::infinity();
+	unsigned int bestEpoch = 0;
+	for (unsigned int epoch = 1; epoch < FineTuningEpochs; epoch++)
 	{
 		sda.FineTune(datasets.TrainingData(), FineTuningLearningRate);
-		auto thisTestLoss = sda.ComputeErrorRates(datasets.TestData());
+		Floating thisTestLoss = sda.ComputeErrorRates(datasets.TestData());
 		std::cout << "epoch " << epoch << ", test score " << thisTestLoss * 100.0 << " %" << std::endl;
 		if (thisTestLoss < testScore)
 		{

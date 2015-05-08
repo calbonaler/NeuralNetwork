@@ -1,8 +1,6 @@
-﻿#include <fstream>
-#include <cstdint>
-#include <cassert>
-#include <limits>
-#include "LearningSet.h"
+﻿#include "LearningSet.h"
+
+template <class T> inline T* pointer_cast(void* pointer) { return static_cast<T*>(pointer); }
 
 DataSet& DataSet::operator=(DataSet&& dataset)
 {
@@ -21,22 +19,22 @@ DataSet& DataSet::operator=(DataSet&& dataset)
 
 void DataSet::CopyFrom(const DataSet& dataset, size_t count)
 {
-	assert(count > 0 && count <= dataset.count);
+	assert(count > 0 && count <= dataset.Count());
 	Allocate(count, dataset.row, dataset.column);
 	for (unsigned int i = 0; i < count; i++)
 	{
 		labels[i] = dataset.labels[i];
-		std::copy(dataset.images[i].begin(), dataset.images[i].end(), images[i].begin());
+		images[i] = dataset.images[i];
 	}
 }
 
-void DataSet::Allocate(size_t length, int newRow, int newColumn)
+void DataSet::Allocate(size_t length, unsigned int newRow, unsigned int newColumn)
 {
 	assert(newRow * newColumn > 0);
 	labels.resize(length);
 	images.resize(length);
 	for (size_t i = 0; i < length; i++)
-		images[i].resize((unsigned)(newRow * newColumn));
+		images[i].resize(newRow * newColumn);
 	row = newRow;
 	column = newColumn;
 }
@@ -73,12 +71,12 @@ void LoadMnistSetInternal(DataSet& dataset, const std::string& fileName)
 	auto row = ReadInt32BigEndian(imageFile);
 	auto column = ReadInt32BigEndian(imageFile);
 	auto imageLength = row * column;
-	dataset.Allocate(length, (signed)row, (signed)column);
+	dataset.Allocate(length, row, column);
 	for (uint32_t i = 0; i < length; i++)
 	{
 		dataset.Labels()[i] = ReadByte(labelFile);
 		for (uint32_t j = 0; j < imageLength; j++)
-			dataset.Images()[i][j] = static_cast<double>(ReadByte(imageFile)) / std::numeric_limits<unsigned char>::max();
+			dataset.Images()[i][j] = static_cast<ValueType>(ReadByte(imageFile)) / std::numeric_limits<unsigned char>::max();
 	}
 }
 

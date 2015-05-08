@@ -1,7 +1,5 @@
 ﻿#pragma once
 
-#include <string>
-#include <vector>
 #include "Utility.h"
 
 /// <summary>学習および識別に使用されるデータセットを表します。</summary>
@@ -47,34 +45,34 @@ public:
 	/// <param name="length">総パターン数を指定します。</param>
 	/// <param name="newRow">画像の垂直方向の長さを指定します。</param>
 	/// <param name="newColumn">画像の水平方向の長さを指定します。</param>
-	void Allocate(size_t length, int newRow, int newColumn);
+	void Allocate(size_t length, unsigned int newRow, unsigned int newColumn);
 
 	/// <summary>総パターン数を取得します。</summary>
 	size_t Count() const { return labels.size(); }
 
 	/// <summary>画像の垂直方向の長さを取得します。</summary>
-	int Row() const { return row; }
+	unsigned int Row() const { return row; }
 
 	/// <summary>画像の水平方向の長さを取得します。</summary>
-	int Column() const { return column; }
+	unsigned int Column() const { return column; }
 
 	/// <summary>確保されたラベルの保存領域へのポインタを返します。</summary>
-	std::vector<int>& Labels() { return labels; }
+	std::vector<unsigned int>& Labels() { return labels; }
 
 	/// <summary>確保されたラベルの保存領域へのポインタを返します。</summary>
-	const std::vector<int>& Labels() const { return labels; }
+	const std::vector<unsigned int>& Labels() const { return labels; }
 
 	/// <summary>確保された画像の保存領域へのポインタを返します。</summary>
-	std::vector<std::vector<double>>& Images() { return images; }
+	std::vector<VectorType>& Images() { return images; }
 
 	/// <summary>確保された画像の保存領域へのポインタを返します。</summary>
-	const std::vector<std::vector<double>>& Images() const { return images; }
+	const std::vector<VectorType>& Images() const { return images; }
 
 private:
-	int row;
-	int column;
-	std::vector<int> labels;
-	std::vector<std::vector<double>> images;
+	unsigned int row;
+	unsigned int column;
+	std::vector<unsigned int> labels;
+	std::vector<VectorType> images;
 };
 
 /// <summary>学習データおよび識別データを格納するセットを表します。</summary>
@@ -136,7 +134,7 @@ public:
 	const DataSet& TestData() const { return testData; }
 
 	/// <summary>このセットに格納されているパターンのクラス数を示します。</summary>
-	int ClassCount;
+	unsigned int ClassCount;
 
 private:
 	DataSet trainingData;

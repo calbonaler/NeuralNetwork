@@ -1,63 +1,58 @@
-﻿#include <limits>
-#include <cmath>
-#include "Functions.h"
+﻿#include "Functions.h"
 
 const ActivationFunction* ActivationFunction::Sigmoid()
 {
-	static ActivationFunction sigmoid([](const Indexer& x, std::vector<double>& res)
+	static ActivationFunction sigmoid([](const Indexer& x, VectorType& res)
 	{
-		int length = (int)res.size();
 #pragma omp parallel for
-		for (int i = 0; i < length; i++)
-			res[(unsigned)i] = 1 / (1 + exp(-x(i)));
-	}, [](double y) { return y * (1 - y); });
+		for (int i = 0; i < static_cast<signed int>(res.size()); i++)
+			res[static_cast<unsigned int>(i)] = 1 / (1 + exp(-x(static_cast<unsigned int>(i))));
+	}, [](ValueType y) { return y * (1 - y); });
 	return &sigmoid;
 }
 
-void ActivationFunction::Identity(const Indexer& input, std::vector<double>& result)
+void ActivationFunction::Identity(const Indexer& input, VectorType& result)
 {
-	int length = (int)result.size();
 #pragma omp parallel for
-	for (int i = 0; i < length; i++)
-		result[(unsigned)i] = input(i);
+	for (int i = 0; i < static_cast<signed int>(result.size()); i++)
+		result[static_cast<unsigned int>(i)] = input(static_cast<unsigned int>(i));
 }
 
-void ActivationFunction::SoftMax(const Indexer& input, std::vector<double>& result)
+void ActivationFunction::SoftMax(const Indexer& input, VectorType& result)
 {
-	int length = (int)result.size();
-	double max = -std::numeric_limits<double>::infinity();
-	for (int i = 0; i < length; i++)
-		max = fmax(result[(unsigned)i] = input(i), max);
-	double sum = 0;
-	for (int i = 0; i < length; i++)
-		sum += result[(unsigned)i] = exp(result[(unsigned)i] - max);
+	ValueType max = -std::numeric_limits<ValueType>::infinity();
+	for (unsigned int i = 0; i < result.size(); i++)
+		max = std::max(result[i] = input(i), max);
+	ValueType sum = 0;
+	for (unsigned int i = 0; i < result.size(); i++)
+		sum += result[i] = exp(result[i] - max);
 #pragma omp parallel for
-	for (int i = 0; i < length; i++)
-		result[(unsigned)i] /= sum;
+	for (int i = 0; i < static_cast<signed int>(result.size()); i++)
+		result[static_cast<unsigned int>(i)] /= sum;
 }
 
-double ErrorFunction::BiClassCrossEntropy(const std::vector<double>& source, const std::vector<double>& target)
+ValueType ErrorFunction::BiClassCrossEntropy(const VectorType& source, const VectorType& target)
 {
-	double sum = 0;
+	ValueType sum = 0;
 	for (unsigned int i = 0; i < source.size(); i++)
-		sum -= target[i] * log(source[i] + 1e-10) + (1 - target[i]) * log(1 - source[i] + 1e-10);
+		sum -= target[i] * log(source[i] + static_cast<ValueType>(1e-10)) + (1 - target[i]) * log(1 - source[i] + static_cast<ValueType>(1e-10));
 	return sum;
 }
 
-double ErrorFunction::MultiClassCrossEntropy(const std::vector<double>& source, const std::vector<double>& target)
+ValueType ErrorFunction::MultiClassCrossEntropy(const VectorType& source, const VectorType& target)
 {
-	double sum = 0;
+	ValueType sum = 0;
 	for (unsigned int i = 0; i < source.size(); i++)
-		sum -= target[i] * log(source[i] + 1e-10);
+		sum -= target[i] * log(source[i] + static_cast<ValueType>(1e-10));
 	return sum;
 }
 
-double ErrorFunction::LeastSquaresMethod(const std::vector<double>& source, const std::vector<double>& target)
+ValueType ErrorFunction::LeastSquaresMethod(const VectorType& source, const VectorType& target)
 {
-	double sum = 0;
+	ValueType sum = 0;
 	for (unsigned int i = 0; i < source.size(); i++)
 	{
-		double x = source[i] - target[i];
+		ValueType x = source[i] - target[i];
 		sum += x * x;
 	}
 	return sum / 2;

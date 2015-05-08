@@ -2,20 +2,20 @@
 
 #include "Utility.h"
 
-class ActivationFunction
+typedef std::function<ValueType(unsigned int)> Indexer;
+
+class ActivationFunction : private boost::noncopyable
 {
 public:
-	typedef std::function<void(const Indexer&, std::vector<double>&)> NormalForm;
-	typedef std::function<double(double)> DifferentiatedForm;
-
-	FORCE_UNCOPYABLE(ActivationFunction);
+	typedef std::function<void(const Indexer&, VectorType&)> NormalForm;
+	typedef std::function<ValueType(ValueType)> DifferentiatedForm;
 
 	const NormalForm Normal;
 	const DifferentiatedForm Differentiated;
 
 	static const ActivationFunction* Sigmoid();
-	static void Identity(const Indexer& input, std::vector<double>& result);
-	static void SoftMax(const Indexer& input, std::vector<double>& result);
+	static void Identity(const Indexer& input, VectorType& result);
+	static void SoftMax(const Indexer& input, VectorType& result);
 
 private:
 	ActivationFunction(const NormalForm& normal, const DifferentiatedForm& differentiated) : Normal(normal), Differentiated(differentiated) { }
@@ -23,7 +23,7 @@ private:
 
 namespace ErrorFunction
 {
-	double BiClassCrossEntropy(const std::vector<double>& source, const std::vector<double>& target);
-	double MultiClassCrossEntropy(const std::vector<double>& source, const std::vector<double>& target);
-	double LeastSquaresMethod(const std::vector<double>& source, const std::vector<double>& target);
+	ValueType BiClassCrossEntropy(const VectorType& source, const VectorType& target);
+	ValueType MultiClassCrossEntropy(const VectorType& source, const VectorType& target);
+	ValueType LeastSquaresMethod(const VectorType& source, const VectorType& target);
 }
