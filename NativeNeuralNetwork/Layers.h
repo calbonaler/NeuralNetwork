@@ -73,7 +73,7 @@ protected:
 		assert(nIn * nOut > 0);
 		Weight[0] = new ValueType[nIn * nOut]();
 		for (unsigned int i = 1; i < nOut; i++)
-			Weight[i] = Weight[i - 1] + nOut;
+			Weight[i] = Weight[i - 1] + nIn;
 	}
 
 	/// <summary>この層の線形計算の結果に対するニューラルネットワークのコストの勾配ベクトル (Delta) の要素を計算します。</summary>
