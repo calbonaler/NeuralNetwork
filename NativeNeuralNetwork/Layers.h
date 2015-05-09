@@ -49,7 +49,7 @@ public:
 	/// <returns>下位層の学習に必要な情報。</returns>
 	VectorType Learn(const VectorType& input, const VectorType& output, const Indexer& upperInfo, ValueType learningRate)
 	{
-		VectorType lowerInfo = VectorType(0.0, nIn);
+		VectorType lowerInfo(0.0, nIn);
 		for (unsigned int i = 0; i < nOut; i++)
 		{
 			ValueType deltaI = GetDelta(output[i], upperInfo(i));
@@ -70,7 +70,8 @@ protected:
 	/// <param name="activation">この層に適用する活性化関数を指定します。</param>
 	Layer(unsigned int nIn, unsigned int nOut, const ActivationFunction::NormalForm& activation) : nIn(nIn), nOut(nOut), Weight(new ValueType*[nOut]), Bias(0.0, nOut), Activation(activation)
 	{
-		assert(nIn * nOut > 0);
+		if (nIn <= 0 || nOut <= 0)
+			throw std::invalid_argument("nIn and nOut must not be 0");
 		Weight[0] = new ValueType[nIn * nOut]();
 		for (unsigned int i = 1; i < nOut; i++)
 			Weight[i] = Weight[i - 1] + nIn;
@@ -128,8 +129,10 @@ public:
 	/// <param name="hiddenLayers">この隠れ層が所属している Stacked Denoising Auto-Encoder のすべての隠れ層を表すリストを指定します。</param>
 	HiddenLayer(unsigned int nIn, unsigned int nOut, const ActivationFunction* activation, IHiddenLayerCollection* hiddenLayers) : Layer(nIn, nOut, activation->Normal), differentiatedActivation(activation->Differentiated), visibleBias(0.0, nIn), hiddenLayers(hiddenLayers)
 	{
-		assert(activation);
-		assert(hiddenLayers);
+		if (!activation)
+			throw std::invalid_argument("activation must not be null pointer");
+		if (!hiddenLayers)
+			throw std::invalid_argument("hiddenLayers must not be null pointer");
 		std::uniform_real_distribution<ValueType> dist(0, nextafter(static_cast<ValueType>(1.0), std::numeric_limits<ValueType>::max()));
 		for (unsigned int j = 0; j < nOut; j++)
 		{
@@ -250,9 +253,9 @@ public:
 	void Set(size_t index, unsigned int neurons)
 	{
 		if (frozen)
-			throw std::domain_error("固定されたコレクションの隠れ層を設定することはできません。");
+			throw std::domain_error("freezed collection cannot be changed");
 		if (index > items.size())
-			throw std::out_of_range("index");
+			throw std::out_of_range("index less than or equal to Count()");
 		if (index == items.size())
 		{
 			items.push_back(std::unique_ptr<HiddenLayer>(new HiddenLayer(nextLayerInputUnits, neurons, ActivationFunction::Sigmoid(), this)));

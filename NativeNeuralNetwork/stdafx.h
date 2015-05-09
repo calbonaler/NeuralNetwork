@@ -15,7 +15,6 @@
 
 // Standard C Libraries for C++
 
-#include <cassert>
 #include <cmath>
 #include <cstdint>
 

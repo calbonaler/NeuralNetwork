@@ -54,7 +54,8 @@ public:
 	/// <param name="count"><paramref name="dataset"/> からこのデータセットにコピーされるデータ数を指定します。データは先頭からコピーされます。</param>
 	void CopyFrom(const DataSet& dataset, size_t count)
 	{
-		assert(count > 0 && count <= dataset.Count());
+		if (count <= 0 || count > dataset.Count())
+			throw std::invalid_argument("count must be inside of range (0, dataset.Count()]");
 		Allocate(count, dataset.row, dataset.column);
 		for (unsigned int i = 0; i < count; i++)
 		{
@@ -69,7 +70,8 @@ public:
 	/// <param name="newColumn">画像の水平方向の長さを指定します。</param>
 	void Allocate(size_t length, unsigned int newRow, unsigned int newColumn)
 	{
-		assert(newRow * newColumn > 0);
+		if (newRow <= 0 || newColumn <= 0)
+			throw std::invalid_argument("newRow and newColumn must not be 0");
 		labels.resize(length);
 		images.resize(length);
 		for (size_t i = 0; i < length; i++)
