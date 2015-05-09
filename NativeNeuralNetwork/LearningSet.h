@@ -34,18 +34,49 @@ public:
 	/// <summary>指定されたデータセットからこのデータセットにデータを移動します。</summary>
 	/// <param name="dataset">データの移動元のデータセットを指定します。</param>
 	/// <returns>このデータセットへの参照。</returns>
-	DataSet& operator=(DataSet&& dataset);
+	DataSet& operator=(DataSet&& dataset)
+	{
+		if (this != &dataset)
+		{
+			labels = std::move(dataset.labels);
+			images = std::move(dataset.images);
+			row = dataset.row;
+			column = dataset.column;
+
+			dataset.row = 0;
+			dataset.column = 0;
+		}
+		return *this;
+	}
 
 	/// <summary>指定されたデータセットの一部をこのデータセットにコピーします。</summary>
 	/// <param name="dataset">基になるデータセットを指定します。</param>
 	/// <param name="count"><paramref name="dataset"/> からこのデータセットにコピーされるデータ数を指定します。データは先頭からコピーされます。</param>
-	void CopyFrom(const DataSet& dataset, size_t count);
+	void CopyFrom(const DataSet& dataset, size_t count)
+	{
+		assert(count > 0 && count <= dataset.Count());
+		Allocate(count, dataset.row, dataset.column);
+		for (unsigned int i = 0; i < count; i++)
+		{
+			labels[i] = dataset.labels[i];
+			images[i] = dataset.images[i];
+		}
+	}
 
 	/// <summary>画像およびラベルの保存領域を確保します。</summary>
 	/// <param name="length">総パターン数を指定します。</param>
 	/// <param name="newRow">画像の垂直方向の長さを指定します。</param>
 	/// <param name="newColumn">画像の水平方向の長さを指定します。</param>
-	void Allocate(size_t length, unsigned int newRow, unsigned int newColumn);
+	void Allocate(size_t length, unsigned int newRow, unsigned int newColumn)
+	{
+		assert(newRow * newColumn > 0);
+		labels.resize(length);
+		images.resize(length);
+		for (size_t i = 0; i < length; i++)
+			images[i].resize(newRow * newColumn);
+		row = newRow;
+		column = newColumn;
+	}
 
 	/// <summary>総パターン数を取得します。</summary>
 	size_t Count() const { return labels.size(); }
@@ -141,6 +172,62 @@ private:
 	DataSet testData;
 };
 
-/// <summary>MNIST をロードします。</summary>
-/// <param name="directoryName">MNIST データが存在するディレクトリの場所を指定します。</param>
-LearningSet LoadMnistSet(const std::string& directoryName);
+/// <summary>学習セットのローダーを表します。</summary>
+class LearningSetLoader
+{
+public:
+	/// <summary>MNIST をロードします。</summary>
+	/// <param name="directoryName">MNIST データが存在するディレクトリの場所を指定します。</param>
+	static LearningSet LoadMnistSet(const std::string& directoryName)
+	{
+		LearningSet set;
+		LoadMnistDataSet(set.TrainingData(), directoryName + "/train");
+		LoadMnistDataSet(set.TestData(), directoryName + "/t10k");
+		set.ClassCount = 10;
+		return set;
+	}
+
+private:
+	static void LoadMnistDataSet(DataSet& dataset, const std::string& fileName)
+	{
+		std::ifstream labelFile((fileName + "-labels.idx1-ubyte").c_str(), std::ios::binary | std::ios::in);
+		std::ifstream imageFile((fileName + "-images.idx3-ubyte").c_str(), std::ios::binary | std::ios::in);
+		if (ReadInt32BigEndian(labelFile) != 0x801)
+			return;
+		if (ReadInt32BigEndian(imageFile) != 0x803)
+			return;
+		auto length = ReadInt32BigEndian(labelFile);
+		if (length != ReadInt32BigEndian(imageFile))
+			return;
+		auto row = ReadInt32BigEndian(imageFile);
+		auto column = ReadInt32BigEndian(imageFile);
+		auto imageLength = row * column;
+		dataset.Allocate(length, row, column);
+		for (uint32_t i = 0; i < length; i++)
+		{
+			dataset.Labels()[i] = ReadByte(labelFile);
+			for (uint32_t j = 0; j < imageLength; j++)
+				dataset.Images()[i][j] = static_cast<ValueType>(ReadByte(imageFile)) / std::numeric_limits<unsigned char>::max();
+		}
+	}
+
+	static uint32_t ReadInt32BigEndian(std::ifstream& stream)
+	{
+		uint32_t temp;
+		stream.read(pointer_cast<char>(&temp), sizeof(temp));
+		return
+			(temp & 0x000000FF) << 24 |
+			(temp & 0x0000FF00) << 8 |
+			(temp & 0x00FF0000) >> 8 |
+			(temp & 0xFF000000) >> 24;
+	}
+
+	static uint8_t ReadByte(std::ifstream& stream)
+	{
+		uint8_t temp;
+		stream.read(pointer_cast<char>(&temp), sizeof(temp));
+		return temp;
+	}
+
+	template <class T> static T* pointer_cast(void* pointer) { return static_cast<T*>(pointer); }
+};

@@ -7,7 +7,7 @@ typedef std::valarray<ValueType> VectorType;
 class ReferableVector
 {
 public:
-	ReferableVector() : reference_target(nullptr) { }
+	ReferableVector() : reference_target(nullptr), target() { }
 	ReferableVector(const VectorType& reference) : reference_target(&reference) { }
 	ReferableVector(VectorType&& instance) : reference_target(nullptr), target(std::move(instance)) { }
 	ReferableVector(ReferableVector&& right) : reference_target(right.reference_target), target(std::move(right.target)) { }
@@ -31,7 +31,8 @@ public:
 		return *this;
 	}
 
-	const VectorType& get() const { return reference_target ? *reference_target : target; }
+	operator const VectorType&() const { return reference_target ? *reference_target : target; }
+	const ValueType& operator[](size_t index) const { return operator const VectorType &()[index]; }
 
 private:
 	const VectorType* reference_target;

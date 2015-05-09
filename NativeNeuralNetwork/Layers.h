@@ -1,12 +1,20 @@
 ﻿#include "Functions.h"
 #include "LearningSet.h"
 
+#pragma warning (push)
+// Because IHiddenLayerCollection is Interface (or Mix-in), destructor is not needed.
+#pragma warning (disable : 4265)
+
 /// <summary>ニューラルネットワークの層を表す抽象クラスです。</summary>
 class Layer : private boost::noncopyable
 {
 public:
 	/// <summary>この層を破棄します。</summary>
-	virtual ~Layer();
+	virtual ~Layer()
+	{
+		delete[] Weight[0];
+		delete[] Weight;
+	}
 
 	/// <summary>この層の結合重みを示します。</summary>
 	ValueType** const Weight;
@@ -20,7 +28,18 @@ public:
 	/// <summary>この層の入力に対する出力を計算します。</summary>
 	/// <param name="input">層に入力するベクトルを指定します。</param>
 	/// <returns>この層の出力を示すベクトル。</returns>
-	VectorType Compute(const VectorType& input) const;
+	VectorType Compute(const VectorType& input) const
+	{
+		VectorType output(nOut);
+		Activation([&](unsigned int j)
+		{
+			ValueType ret = 0;
+			for (unsigned int k = 0; k < nIn; k++)
+				ret += input[k] * Weight[j][k];
+			return ret + Bias[j];
+		}, output);
+		return std::move(output);
+	}
 
 	/// <summary>この層の学習を行い、下位層の学習に必要な情報を返します。</summary>
 	/// <param name="input">この層への入力を示すベクトルを指定します。</param>
@@ -28,14 +47,34 @@ public:
 	/// <param name="upperInfo">上位層から得られた学習に必要な情報を指定します。この層が出力層の場合、これは教師信号になります。</param>
 	/// <param name="learningRate">結合重みとバイアスをどれほど更新するかを示す値を指定します。</param>
 	/// <returns>下位層の学習に必要な情報。</returns>
-	VectorType Learn(const VectorType& input, const VectorType& output, const Indexer& upperInfo, ValueType learningRate);
+	VectorType Learn(const VectorType& input, const VectorType& output, const Indexer& upperInfo, ValueType learningRate)
+	{
+		VectorType lowerInfo = VectorType(0.0, nIn);
+		for (unsigned int i = 0; i < nOut; i++)
+		{
+			ValueType deltaI = GetDelta(output[i], upperInfo(i));
+			for (unsigned int j = 0; j < nIn; j++)
+			{
+				lowerInfo[j] += Weight[i][j] * deltaI;
+				Weight[i][j] -= learningRate * (deltaI * input[j]);
+			}
+			Bias[i] -= learningRate * deltaI;
+		}
+		return std::move(lowerInfo);
+	}
 
 protected:
 	/// <summary>入力されるニューロン数、この層のニューロン数、活性化関数を使用して、<see cref="Layer"/> クラスの新しいインスタンスを初期化します。</summary>
 	/// <param name="nIn">この層に入力される層のニューロン数を指定します。</param>
 	/// <param name="nOut">この層のニューロン数を指定します。</param>
 	/// <param name="activation">この層に適用する活性化関数を指定します。</param>
-	Layer(unsigned int nIn, unsigned int nOut, const ActivationFunction::NormalForm& activation);
+	Layer(unsigned int nIn, unsigned int nOut, const ActivationFunction::NormalForm& activation) : nIn(nIn), nOut(nOut), Weight(new ValueType*[nOut]), Bias(0.0, nOut), Activation(activation)
+	{
+		assert(nIn * nOut > 0);
+		Weight[0] = new ValueType[nIn * nOut]();
+		for (unsigned int i = 1; i < nOut; i++)
+			Weight[i] = Weight[i - 1] + nOut;
+	}
 
 	/// <summary>この層の線形計算の結果に対するニューラルネットワークのコストの勾配ベクトル (Delta) の要素を計算します。</summary>
 	/// <param name="output">この層からの出力を示すベクトルの要素を指定します。</param>
@@ -46,7 +85,21 @@ protected:
 	const ActivationFunction::NormalForm Activation;
 };
 
-class HiddenLayerCollection;
+class HiddenLayer;
+
+/// <summary>隠れ層のコレクションに対するインターフェイスを表します。</summary>
+class IHiddenLayerCollection
+{
+public:
+	/// <summary>隠れ層の計算に使用される乱数生成器を取得します。</summary>
+	virtual std::mt19937& GetRandomNumberGenerator() = 0;
+
+	/// <summary>指定された層の入力ベクトルを計算します。層が指定されない場合、このメソッドは出力層の入力ベクトルを計算します。</summary>
+	/// <param name="input">最初の隠れ層に与える入力を指定します。</param>
+	/// <param name="stopLayer">入力ベクトルを計算する層を指定します。この引数は省略可能です。</param>
+	/// <returns>指定された層の入力ベクトル。層が指定されなかった場合は出力層の入力ベクトルを返します。</returns>
+	virtual ReferableVector Compute(const VectorType& input, const HiddenLayer* stopLayer) const = 0;
+};
 
 /// <summary>
 /// 多層パーセプトロンの典型的な隠れ層を表します。
@@ -73,20 +126,54 @@ public:
 	/// <param name="nOut">隠れ素子の数を指定します。</param>
 	/// <param name="activation">隠れ層に適用される活性化関数を指定します。</param>
 	/// <param name="hiddenLayers">この隠れ層が所属している Stacked Denoising Auto-Encoder のすべての隠れ層を表すリストを指定します。</param>
-	HiddenLayer(unsigned int nIn, unsigned int nOut, const ActivationFunction* activation, HiddenLayerCollection* hiddenLayers);
+	HiddenLayer(unsigned int nIn, unsigned int nOut, const ActivationFunction* activation, IHiddenLayerCollection* hiddenLayers) : Layer(nIn, nOut, activation->Normal), differentiatedActivation(activation->Differentiated), visibleBias(0.0, nIn), hiddenLayers(hiddenLayers)
+	{
+		assert(activation);
+		assert(hiddenLayers);
+		std::uniform_real_distribution<ValueType> dist(0, nextafter(static_cast<ValueType>(1.0), std::numeric_limits<ValueType>::max()));
+		for (unsigned int j = 0; j < nOut; j++)
+		{
+			for (unsigned int i = 0; i < nIn; i++)
+			{
+				Weight[j][i] = (2 * dist(hiddenLayers->GetRandomNumberGenerator()) - 1) * sqrt(static_cast<ValueType>(6.0) / (nIn + nOut));
+				if (activation == ActivationFunction::Sigmoid())
+					Weight[j][i] *= 4;
+			}
+		}
+	}
 
 	/// <summary>この層から雑音除去自己符号化器を構成し、指定されたデータセットを使用して訓練した結果のコストを返します。</summary>
 	/// <param name="dataset">訓練に使用するデータセットを指定します。</param>
 	/// <param name="learningRate">学習率を指定します。</param>
 	/// <param name="noise">構成された雑音除去自己符号化器の入力を生成する際のデータの欠損率を指定します。</param>
 	/// <returns>構成された雑音除去自己符号化器の入力に対するコスト。</returns>
-	ValueType Train(const DataSet& dataset, ValueType learningRate, Floating noise);
+	ValueType Train(const DataSet& dataset, ValueType learningRate, Floating noise)
+	{
+		VectorType delta(nOut);
+		return ComputeCost(dataset, noise, [&](const VectorType& image, const VectorType& corrupted, const VectorType& latent, const VectorType& reconstructed)
+		{
+			for (unsigned int i = 0; i < nOut; i++)
+			{
+				delta[i] = 0;
+				for (unsigned int j = 0; j < nIn; j++)
+					delta[i] += (reconstructed[j] - image[j]) * Weight[i][j];
+				delta[i] *= differentiatedActivation(latent[i]);
+				Bias[i] -= learningRate * delta[i];
+			};
+			for (unsigned int j = 0; j < nIn; j++)
+			{
+				for (unsigned int i = 0; i < nOut; i++)
+					Weight[i][j] -= learningRate * ((reconstructed[j] - image[j]) * latent[i] + delta[i] * corrupted[j]);
+				visibleBias[j] -= learningRate * (reconstructed[j] - image[j]);
+			};
+		});
+	}
 
 	/// <summary>この層から雑音除去自己符号化器を構成し、指定されたデータセットのコストを計算します。</summary>
 	/// <param name="dataset">コストを計算するデータセットを指定します。</param>
 	/// <param name="noise">構成された雑音除去自己符号化器の入力を生成する際のデータの欠損率を指定します。</param>
 	/// <returns>構成された雑音除去自己符号化器の入力に対するコスト。</returns>
-	ValueType ComputeCost(const DataSet& dataset, Floating noise) const;
+	ValueType ComputeCost(const DataSet& dataset, Floating noise) const { return ComputeCost(dataset, noise, [](const VectorType&, const VectorType&, const VectorType&, const VectorType&) { }); }
 
 protected:
 	/// <summary>この層の線形計算の結果に対するニューラルネットワークのコストの勾配ベクトル (Delta) の要素を計算します。</summary>
@@ -97,32 +184,85 @@ protected:
 
 private:
 	const ActivationFunction::DifferentiatedForm differentiatedActivation;
-	HiddenLayerCollection* const hiddenLayers;
+	IHiddenLayerCollection* const hiddenLayers;
 	VectorType visibleBias;
+
+	ValueType ComputeCost(const DataSet& dataset, Floating noise, const std::function<void(const VectorType&, const VectorType&, const VectorType&, const VectorType&)>& update) const
+	{
+		std::uniform_real_distribution<Floating> dist(0, 1);
+		VectorType corrupted(nIn);
+		VectorType latent(nOut);
+		VectorType reconstructed(nIn);
+		ValueType cost = 0;
+		for (unsigned int n = 0; n < dataset.Count(); n++)
+		{
+			auto image = hiddenLayers->Compute(dataset.Images()[n], this);
+			for (unsigned int i = 0; i < nIn; i++)
+				corrupted[i] = dist(hiddenLayers->GetRandomNumberGenerator()) < noise ? 0 : image[i];
+			Activation([&](unsigned int j)
+			{
+				ValueType ret = 0;
+				for (unsigned int i = 0; i < nIn; i++)
+					ret += corrupted[i] * Weight[j][i];
+				return ret + Bias[j];
+			}, latent);
+			Activation([&](unsigned int j)
+			{
+				ValueType ret = 0;
+				for (unsigned int i = 0; i < nOut; i++)
+					ret += latent[i] * Weight[i][j];
+				return ret + visibleBias[j];
+			}, reconstructed);
+			cost += ErrorFunction::BiClassCrossEntropy(image, reconstructed);
+			update(image, corrupted, latent, reconstructed);
+		}
+		return cost / dataset.Count();
+	}
 };
 
 /// <summary>隠れ層のコレクションを表します。</summary>
-class HiddenLayerCollection : private boost::noncopyable
+class HiddenLayerCollection : public IHiddenLayerCollection, private boost::noncopyable
 {
 public:
 	/// <summary>乱数生成器のシード値と入力層のユニット数を指定して、<see cref="HiddenLayerCollection"/> クラスの新しいインスタンスを初期化します。</summary>
 	/// <param name="rngSeed">隠れ層の計算に使用される乱数生成器のシード値を指定します。</param>
 	/// <param name="nIn">入力層のユニット数を指定します。</param>
-	HiddenLayerCollection(std::mt19937::result_type rngSeed, unsigned int nIn) : RandomNumberGenerator(rngSeed), nextLayerInputUnits(nIn), frozen(false) { }
+	HiddenLayerCollection(std::mt19937::result_type rngSeed, unsigned int nIn) : rng(rngSeed), nextLayerInputUnits(nIn), frozen(false) { }
 
-	/// <summary>隠れ層の計算に使用される乱数生成器を示します。</summary>
-	std::mt19937 RandomNumberGenerator;
+	/// <summary>隠れ層の計算に使用される乱数生成器を取得します。</summary>
+	std::mt19937& GetRandomNumberGenerator() { return rng; }
 
 	/// <summary>指定された層の入力ベクトルを計算します。層が指定されない場合、このメソッドは出力層の入力ベクトルを計算します。</summary>
 	/// <param name="input">最初の隠れ層に与える入力を指定します。</param>
 	/// <param name="stopLayer">入力ベクトルを計算する層を指定します。この引数は省略可能です。</param>
 	/// <returns>指定された層の入力ベクトル。層が指定されなかった場合は出力層の入力ベクトルを返します。</returns>
-	ReferableVector Compute(const VectorType& input, const HiddenLayer* stopLayer) const;
+	ReferableVector Compute(const VectorType& input, const HiddenLayer* stopLayer) const
+	{
+		ReferableVector result(input);
+		for (unsigned int i = 0; i < items.size() && items[i].get() != stopLayer; i++)
+			result = items[i]->Compute(result);
+		return std::move(result);
+	}
 
 	/// <summary>指定されたインデックスの隠れ層のニューロン数を変更します。このメソッドは隠れ層を追加することもできます。</summary>
 	/// <param name="index">ニューロン数を変更する隠れ層のインデックスを指定します。</param>
 	/// <param name="neurons">指定された隠れ層の新しいニューロン数を指定します。</param>
-	void Set(size_t index, unsigned int neurons);
+	void Set(size_t index, unsigned int neurons)
+	{
+		if (frozen)
+			throw std::domain_error("固定されたコレクションの隠れ層を設定することはできません。");
+		if (index > items.size())
+			throw std::out_of_range("index");
+		if (index == items.size())
+		{
+			items.push_back(std::unique_ptr<HiddenLayer>(new HiddenLayer(nextLayerInputUnits, neurons, ActivationFunction::Sigmoid(), this)));
+			nextLayerInputUnits = neurons;
+			return;
+		}
+		items[index] = std::unique_ptr<HiddenLayer>(new HiddenLayer(items[index]->nIn, neurons, ActivationFunction::Sigmoid(), this));
+		if (index < items.size() - 1)
+			items[index + 1] = std::unique_ptr<HiddenLayer>(new HiddenLayer(neurons, items[index + 1]->nOut, ActivationFunction::Sigmoid(), this));
+	}
 
 	/// <summary>このコレクションを固定して変更不可能にします。</summary>
 	void Freeze() { frozen = true; }
@@ -140,6 +280,7 @@ private:
 	bool frozen;
 	unsigned int nextLayerInputUnits;
 	std::vector<std::unique_ptr<HiddenLayer>> items;
+	std::mt19937 rng;
 };
 
 /// <summary>
@@ -158,7 +299,17 @@ public:
 	/// <summary>確率が最大となるクラスを推定します。</summary>
 	/// <param name="input">層に入力するベクトルを指定します。</param>
 	/// <returns>推定された確率最大のクラスのインデックス。</returns>
-	unsigned int Predict(const VectorType& input) const;
+	unsigned int Predict(const VectorType& input) const
+	{
+		auto computed = Compute(input);
+		unsigned int maxIndex = 0;
+		for (unsigned int i = 1; i < nOut; i++)
+		{
+			if (computed[i] > computed[maxIndex])
+				maxIndex = i;
+		}
+		return maxIndex;
+	}
 
 protected:
 	/// <summary>この層の線形計算の結果に対するニューラルネットワークのコストの勾配ベクトル (Delta) の要素を計算します。</summary>
@@ -167,3 +318,5 @@ protected:
 	/// <returns>勾配ベクトルの要素。</returns>
 	ValueType GetDelta(ValueType output, ValueType upperInfo) const { return output - upperInfo; }
 };
+
+#pragma warning (pop)

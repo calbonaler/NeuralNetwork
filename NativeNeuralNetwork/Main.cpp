@@ -4,7 +4,7 @@ void TestSdA(const LearningSet& datasets);
 
 int main()
 {
-	TestSdA(LearningSet(LoadMnistSet("MNIST"), 5000, 1000));
+	TestSdA(LearningSet(LearningSetLoader::LoadMnistSet("MNIST"), 5000, 1000));
 	return 0;
 }
 
