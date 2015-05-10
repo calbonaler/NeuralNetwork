@@ -13,16 +13,9 @@ public:
 	const NormalForm Normal;
 	const DifferentiatedForm Differentiated;
 
-	static const ActivationFunction* Sigmoid()
-	{
-		static ActivationFunction sigmoid([](const Indexer& x, VectorType& res)
-		{
-#pragma omp parallel for
-			for (int i = 0; i < static_cast<int>(res.size()); i++)
-				res[static_cast<unsigned int>(i)] = 1 / (1 + exp(-x(static_cast<unsigned int>(i))));
-		}, [](ValueType y) { return y * (1 - y); });
-		return &sigmoid;
-	}
+	static const ActivationFunction* LogisticSigmoid() { return &_logisticSigmoid; }
+	static const ActivationFunction* Tanh() { return &_tanh; }
+	static const ActivationFunction* RectifiedLinear() { return &_rectifiedLinear; }
 	static void Identity(const Indexer& input, VectorType& result)
 	{
 #pragma omp parallel for
@@ -44,6 +37,10 @@ public:
 
 private:
 	ActivationFunction(const NormalForm& normal, const DifferentiatedForm& differentiated) : Normal(normal), Differentiated(differentiated) { }
+	~ActivationFunction() { }
+	static ActivationFunction _logisticSigmoid;
+	static ActivationFunction _tanh;
+	static ActivationFunction _rectifiedLinear;
 };
 
 class ErrorFunction
