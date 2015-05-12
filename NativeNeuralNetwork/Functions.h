@@ -16,12 +16,8 @@ public:
 	static const ActivationFunction* LogisticSigmoid() { return &_logisticSigmoid; }
 	static const ActivationFunction* Tanh() { return &_tanh; }
 	static const ActivationFunction* RectifiedLinear() { return &_rectifiedLinear; }
-	static void Identity(const Indexer& input, VectorType& result)
-	{
-#pragma omp parallel for
-		for (int i = 0; i < static_cast<int>(result.size()); i++)
-			result[static_cast<unsigned int>(i)] = input(static_cast<unsigned int>(i));
-	}
+	static const ActivationFunction* SoftPlus() { return &_softplus; }
+	static const ActivationFunction* Identity() { return &_identity; }
 	static void SoftMax(const Indexer& input, VectorType& result)
 	{
 		ValueType max = -std::numeric_limits<ValueType>::infinity();
@@ -41,9 +37,11 @@ private:
 	static ActivationFunction _logisticSigmoid;
 	static ActivationFunction _tanh;
 	static ActivationFunction _rectifiedLinear;
+	static ActivationFunction _softplus;
+	static ActivationFunction _identity;
 };
 
-class ErrorFunction
+class CostFunction
 {
 public:
 	static ValueType BiClassCrossEntropy(const VectorType& source, const VectorType& target)

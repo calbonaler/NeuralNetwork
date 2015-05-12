@@ -216,7 +216,9 @@ private:
 					ret += latent[i] * Weight[i][j];
 				return ret + visibleBias[j];
 			}, reconstructed);
-			cost += ErrorFunction::BiClassCrossEntropy(image, reconstructed);
+			// This cost function may not match to "Soft Plus" activation function.
+			// But I cannot figure out substitute one...
+			cost += CostFunction::LeastSquaresMethod(image, reconstructed);
 			update(image, corrupted, latent, reconstructed);
 		}
 		return cost / dataset.Count();
@@ -258,13 +260,13 @@ public:
 			throw std::out_of_range("index less than or equal to Count()");
 		if (index == items.size())
 		{
-			items.push_back(std::unique_ptr<HiddenLayer>(new HiddenLayer(nextLayerInputUnits, neurons, ActivationFunction::LogisticSigmoid(), this)));
+			items.push_back(std::unique_ptr<HiddenLayer>(new HiddenLayer(nextLayerInputUnits, neurons, ActivationFunction::SoftPlus(), this)));
 			nextLayerInputUnits = neurons;
 			return;
 		}
-		items[index] = std::unique_ptr<HiddenLayer>(new HiddenLayer(items[index]->nIn, neurons, ActivationFunction::LogisticSigmoid(), this));
+		items[index] = std::unique_ptr<HiddenLayer>(new HiddenLayer(items[index]->nIn, neurons, ActivationFunction::SoftPlus(), this));
 		if (index < items.size() - 1)
-			items[index + 1] = std::unique_ptr<HiddenLayer>(new HiddenLayer(neurons, items[index + 1]->nOut, ActivationFunction::LogisticSigmoid(), this));
+			items[index + 1] = std::unique_ptr<HiddenLayer>(new HiddenLayer(neurons, items[index + 1]->nOut, ActivationFunction::SoftPlus(), this));
 	}
 
 	/// <summary>このコレクションを固定して変更不可能にします。</summary>
