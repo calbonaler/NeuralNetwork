@@ -31,13 +31,7 @@ public:
 	VectorType Compute(const VectorType& input) const
 	{
 		VectorType output(nOut);
-		Activation([&](unsigned int j)
-		{
-			ValueType ret = 0;
-			for (unsigned int k = 0; k < nIn; k++)
-				ret += input[k] * Weight[j][k];
-			return ret + Bias[j];
-		}, output);
+		Activation(Indexer(Weight, Bias, input), output);
 		return std::move(output);
 	}
 
@@ -47,9 +41,9 @@ public:
 	/// <param name="upperInfo">上位層から得られた学習に必要な情報を指定します。この層が出力層の場合、これは教師信号になります。</param>
 	/// <param name="learningRate">結合重みとバイアスをどれほど更新するかを示す値を指定します。</param>
 	/// <returns>下位層の学習に必要な情報。</returns>
-	VectorType Learn(const VectorType& input, const VectorType& output, const Indexer& upperInfo, ValueType learningRate)
+	VectorType Learn(const VectorType& input, const VectorType& output, const std::function<ValueType(unsigned int)>& upperInfo, ValueType learningRate)
 	{
-		VectorType lowerInfo(0.0, nIn);
+		VectorType lowerInfo(static_cast<ValueType>(0), nIn);
 		for (unsigned int i = 0; i < nOut; i++)
 		{
 			ValueType deltaI = GetDelta(output[i], upperInfo(i));
@@ -68,7 +62,7 @@ protected:
 	/// <param name="nIn">この層に入力される層のニューロン数を指定します。</param>
 	/// <param name="nOut">この層のニューロン数を指定します。</param>
 	/// <param name="activation">この層に適用する活性化関数を指定します。</param>
-	Layer(unsigned int nIn, unsigned int nOut, const ActivationFunction::NormalForm& activation) : nIn(nIn), nOut(nOut), Weight(new ValueType*[nOut]), Bias(0.0, nOut), Activation(activation)
+	Layer(unsigned int nIn, unsigned int nOut, const ActivationFunction::NormalForm& activation) : nIn(nIn), nOut(nOut), Weight(new ValueType*[nOut]), Bias(static_cast<ValueType>(0), nOut), Activation(activation)
 	{
 		if (nIn <= 0 || nOut <= 0)
 			throw std::invalid_argument("nIn and nOut must not be 0");
@@ -127,7 +121,7 @@ public:
 	/// <param name="nOut">隠れ素子の数を指定します。</param>
 	/// <param name="activation">隠れ層に適用される活性化関数を指定します。</param>
 	/// <param name="hiddenLayers">この隠れ層が所属している Stacked Denoising Auto-Encoder のすべての隠れ層を表すリストを指定します。</param>
-	HiddenLayer(unsigned int nIn, unsigned int nOut, const ActivationFunction* activation, IHiddenLayerCollection* hiddenLayers) : Layer(nIn, nOut, activation->Normal), differentiatedActivation(activation->Differentiated), visibleBias(0.0, nIn), hiddenLayers(hiddenLayers)
+	HiddenLayer(unsigned int nIn, unsigned int nOut, const ActivationFunction* activation, IHiddenLayerCollection* hiddenLayers) : Layer(nIn, nOut, activation->Normal), differentiatedActivation(activation->Differentiated), visibleBias(static_cast<ValueType>(0), nIn), hiddenLayers(hiddenLayers)
 	{
 		if (!activation)
 			throw std::invalid_argument("activation must not be null pointer");
@@ -202,20 +196,8 @@ private:
 			auto image = hiddenLayers->Compute(dataset.Images()[n], this);
 			for (unsigned int i = 0; i < nIn; i++)
 				corrupted[i] = dist(hiddenLayers->GetRandomNumberGenerator()) < noise ? 0 : image[i];
-			Activation([&](unsigned int j)
-			{
-				ValueType ret = 0;
-				for (unsigned int i = 0; i < nIn; i++)
-					ret += corrupted[i] * Weight[j][i];
-				return ret + Bias[j];
-			}, latent);
-			Activation([&](unsigned int j)
-			{
-				ValueType ret = 0;
-				for (unsigned int i = 0; i < nOut; i++)
-					ret += latent[i] * Weight[i][j];
-				return ret + visibleBias[j];
-			}, reconstructed);
+			Activation(Indexer(Weight, Bias, corrupted), latent);
+			Activation(Indexer(Weight, visibleBias, latent, true), reconstructed);
 			// This cost function may not match to "Soft Plus" activation function.
 			// But I cannot figure out substitute one...
 			cost += CostFunction::LeastSquaresMethod(image, reconstructed);

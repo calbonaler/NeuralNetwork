@@ -1,5 +1,7 @@
 ﻿#pragma once
 
+//#define NEURALNETWORK_USE_GPU
+
 typedef float Floating;
 typedef Floating ValueType;
 typedef std::valarray<ValueType> VectorType;

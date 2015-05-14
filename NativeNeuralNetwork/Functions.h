@@ -2,7 +2,52 @@
 
 #include "Utility.h"
 
-typedef std::function<ValueType(unsigned int)> Indexer;
+class Indexer : private boost::noncopyable
+{
+public:
+	Indexer(ValueType** weight, const VectorType& bias, const VectorType& input, bool transpose = false) :
+#ifdef NEURALNETWORK_USE_GPU
+		_weight(static_cast<int>(bias.size()), static_cast<int>(input.size()), weight[0]),
+		_bias(static_cast<int>(bias.size()), &const_cast<VectorType&>(bias)[0]),
+		_input(static_cast<int>(input.size()), &const_cast<VectorType&>(input)[0]),
+#else
+		_weight(weight),
+		_bias(bias),
+		_input(input),
+#endif
+		_transpose(transpose)
+	{
+	}
+	
+	ValueType operator()(unsigned int index) const
+#ifdef NEURALNETWORK_USE_GPU
+		restrict(cpu, amp)
+#endif
+	{
+		ValueType ret = 0;
+#ifdef NEURALNETWORK_USE_GPU
+		for (int k = 0; k < _weight.extent[1]; k++)
+			ret += _input[k] * _transpose ? _weight[k][static_cast<int>(index)] : _weight[static_cast<int>(index)][k];
+		return ret + _bias[static_cast<int>(index)];
+#else
+		for (unsigned int k = 0; k < _input.size(); k++)
+			ret += _input[k] * _transpose ? _weight[k][index] : _weight[index][k];
+		return ret + _bias[index];
+#endif
+	}
+
+private:
+#ifdef NEURALNETWORK_USE_GPU
+	concurrency::array_view<ValueType, 2> _weight;
+	concurrency::array_view<ValueType, 1> _bias;
+	concurrency::array_view<ValueType, 1> _input;
+#else
+	ValueType** _weight;
+	const VectorType& _bias;
+	const VectorType& _input;
+#endif
+	bool _transpose;
+};
 
 class ActivationFunction : private boost::noncopyable
 {
@@ -18,18 +63,7 @@ public:
 	static const ActivationFunction* RectifiedLinear() { return &_rectifiedLinear; }
 	static const ActivationFunction* SoftPlus() { return &_softplus; }
 	static const ActivationFunction* Identity() { return &_identity; }
-	static void SoftMax(const Indexer& input, VectorType& result)
-	{
-		ValueType max = -std::numeric_limits<ValueType>::infinity();
-		for (unsigned int i = 0; i < result.size(); i++)
-			max = (std::max)(result[i] = input(i), max);
-		ValueType sum = 0;
-		for (unsigned int i = 0; i < result.size(); i++)
-			sum += result[i] = exp(result[i] - max);
-#pragma omp parallel for
-		for (int i = 0; i < static_cast<int>(result.size()); i++)
-			result[static_cast<unsigned int>(i)] /= sum;
-	}
+	static void SoftMax(const Indexer& input, VectorType& result);
 
 private:
 	ActivationFunction(const NormalForm& normal, const DifferentiatedForm& differentiated) : Normal(normal), Differentiated(differentiated) { }

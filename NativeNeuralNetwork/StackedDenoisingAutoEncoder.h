@@ -42,7 +42,7 @@ public:
 			for (; n < HiddenLayers.Count(); n++)
 				inputs[n + 1] = HiddenLayers[n].Compute(inputs[n]);
 			inputs[n + 1] = outputLayer->Compute(inputs[n]);
-			Indexer upperInfo = [&](unsigned int i) { return i == dataset.Labels()[d] ? static_cast<ValueType>(1.0) : static_cast<ValueType>(0.0); };
+			std::function<ValueType(unsigned int)> upperInfo = [&](unsigned int i) { return i == dataset.Labels()[d] ? static_cast<ValueType>(1.0) : static_cast<ValueType>(0.0); };
 			VectorType lowerInfo(outputLayer->Learn(inputs[n], inputs[n + 1], upperInfo, learningRate));
 			while (--n <= HiddenLayers.Count())
 			{
