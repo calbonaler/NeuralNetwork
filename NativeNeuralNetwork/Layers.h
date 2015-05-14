@@ -133,7 +133,7 @@ public:
 			throw std::invalid_argument("activation must not be null pointer");
 		if (!hiddenLayers)
 			throw std::invalid_argument("hiddenLayers must not be null pointer");
-		std::uniform_real_distribution<ValueType> dist(0, nextafter(static_cast<ValueType>(1.0), std::numeric_limits<ValueType>::max()));
+		std::uniform_real_distribution<ValueType> dist(0, nextafter(static_cast<ValueType>(1.0), (std::numeric_limits<ValueType>::max)()));
 		for (unsigned int j = 0; j < nOut; j++)
 		{
 			for (unsigned int i = 0; i < nIn; i++)

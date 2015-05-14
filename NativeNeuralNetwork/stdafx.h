@@ -18,6 +18,11 @@
 #include <cmath>
 #include <cstdint>
 
+// C++ AMP
+
+#include <amp.h>
+#include <amp_math.h>
+
 // Boost
 
 #include <boost/core/noncopyable.hpp>

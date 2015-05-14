@@ -209,7 +209,7 @@ private:
 		{
 			dataset.Labels()[i] = ReadByte(labelFile);
 			for (uint32_t j = 0; j < imageLength; j++)
-				dataset.Images()[i][j] = static_cast<ValueType>(ReadByte(imageFile)) / std::numeric_limits<unsigned char>::max();
+				dataset.Images()[i][j] = static_cast<ValueType>(ReadByte(imageFile)) / (std::numeric_limits<unsigned char>::max)();
 		}
 	}
 

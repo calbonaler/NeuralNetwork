@@ -22,7 +22,7 @@ public:
 	{
 		ValueType max = -std::numeric_limits<ValueType>::infinity();
 		for (unsigned int i = 0; i < result.size(); i++)
-			max = std::max(result[i] = input(i), max);
+			max = (std::max)(result[i] = input(i), max);
 		ValueType sum = 0;
 		for (unsigned int i = 0; i < result.size(); i++)
 			sum += result[i] = exp(result[i] - max);
