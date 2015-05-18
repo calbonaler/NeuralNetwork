@@ -27,11 +27,11 @@ public:
 		ValueType ret = 0;
 #ifdef NEURALNETWORK_USE_GPU
 		for (int k = 0; k < _weight.extent[1]; k++)
-			ret += _input[k] * _transpose ? _weight[k][static_cast<int>(index)] : _weight[static_cast<int>(index)][k];
+			ret += _input[k] * (_transpose ? _weight[k][static_cast<int>(index)] : _weight[static_cast<int>(index)][k]);
 		return ret + _bias[static_cast<int>(index)];
 #else
 		for (unsigned int k = 0; k < _input.size(); k++)
-			ret += _input[k] * _transpose ? _weight[k][index] : _weight[index][k];
+			ret += _input[k] * (_transpose ? _weight[k][index] : _weight[index][k]);
 		return ret + _bias[index];
 #endif
 	}

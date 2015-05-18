@@ -23,13 +23,13 @@ const struct
 	{ 100, 100, 1, static_cast<Floating>(0.3) },
 };
 
-const int FineTuningEpochs = 100;
+const int FineTuningEpochs = 30;
 const ValueType FineTuningLearningRate = static_cast<ValueType>(0.01);
 
 void TestSdA(const LearningSet& datasets)
 {
 	StackedDenoisingAutoEncoder sda(89677, datasets.TrainingData().Row() * datasets.TrainingData().Column());
-	std::ofstream log("Experiments (Variable Neurons).log", std::ios::out);
+	std::ofstream log("Experiments (Activation Function Change).log", std::ios::out);
 	for (unsigned int i = 0; i < sizeof(PreTrainingConfigurations) / sizeof(PreTrainingConfigurations[0]); i++)
 	{
 		for (unsigned int neurons = PreTrainingConfigurations[i].MinNeurons; neurons <= PreTrainingConfigurations[i].MaxNeurons; neurons += PreTrainingConfigurations[i].NeuronIncrement)
@@ -45,7 +45,6 @@ void TestSdA(const LearningSet& datasets)
 			}
 			ValueType costTest = sda.HiddenLayers[i].ComputeCost(datasets.TestData(), PreTrainingConfigurations[i].Noise);
 			std::cout << "Pre-training layer " << i << " complete with training cost " << costTrain << ", test cost " << costTest << std::endl;
-			log << i << ", " << neurons << ", " << costTrain << ", " << costTest << std::endl;
 		}
 	}
 	
@@ -58,6 +57,7 @@ void TestSdA(const LearningSet& datasets)
 		sda.FineTune(datasets.TrainingData(), FineTuningLearningRate);
 		Floating thisTestLoss = sda.ComputeErrorRates(datasets.TestData());
 		std::cout << "epoch " << epoch << ", test score " << thisTestLoss * 100.0 << " %" << std::endl;
+		log << epoch << "," << thisTestLoss * 100.0 << std::endl;
 		if (thisTestLoss < testScore)
 		{
 			testScore = thisTestLoss;

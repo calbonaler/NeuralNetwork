@@ -242,13 +242,13 @@ public:
 			throw std::out_of_range("index less than or equal to Count()");
 		if (index == items.size())
 		{
-			items.push_back(std::unique_ptr<HiddenLayer>(new HiddenLayer(nextLayerInputUnits, neurons, ActivationFunction::SoftPlus(), this)));
+			items.push_back(std::unique_ptr<HiddenLayer>(new HiddenLayer(nextLayerInputUnits, neurons, ActivationFunction::LogisticSigmoid(), this)));
 			nextLayerInputUnits = neurons;
 			return;
 		}
-		items[index] = std::unique_ptr<HiddenLayer>(new HiddenLayer(items[index]->nIn, neurons, ActivationFunction::SoftPlus(), this));
+		items[index] = std::unique_ptr<HiddenLayer>(new HiddenLayer(items[index]->nIn, neurons, ActivationFunction::LogisticSigmoid(), this));
 		if (index < items.size() - 1)
-			items[index + 1] = std::unique_ptr<HiddenLayer>(new HiddenLayer(neurons, items[index + 1]->nOut, ActivationFunction::SoftPlus(), this));
+			items[index + 1] = std::unique_ptr<HiddenLayer>(new HiddenLayer(neurons, items[index + 1]->nOut, ActivationFunction::LogisticSigmoid(), this));
 	}
 
 	/// <summary>このコレクションを固定して変更不可能にします。</summary>
