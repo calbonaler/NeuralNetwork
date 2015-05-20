@@ -202,7 +202,7 @@ private:
 			Activation(Indexer(Weight, visibleBias, latent, true), reconstructed);
 			// This cost function may not match to "Soft Plus" activation function.
 			// But I cannot figure out substitute one...
-			cost += CostFunction::LeastSquaresMethod(image, reconstructed);
+			cost += CostFunction::BiClassCrossEntropy(image, reconstructed);
 			update(image, corrupted, latent, reconstructed);
 		}
 		return cost / dataset.Count();

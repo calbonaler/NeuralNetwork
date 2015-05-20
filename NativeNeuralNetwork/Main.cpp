@@ -28,41 +28,43 @@ const ValueType FineTuningLearningRate = static_cast<ValueType>(0.01);
 
 void TestSdA(const LearningSet& datasets)
 {
-	StackedDenoisingAutoEncoder sda(89677, datasets.TrainingData().Row() * datasets.TrainingData().Column());
-	std::ofstream log("Experiments (Activation Function Change).log", std::ios::out);
-	for (unsigned int i = 0; i < sizeof(PreTrainingConfigurations) / sizeof(PreTrainingConfigurations[0]); i++)
+	// seed: 89677
+	std::random_device random;
+	for (int i = 0; i < 10; i++)
 	{
-		for (unsigned int neurons = PreTrainingConfigurations[i].MinNeurons; neurons <= PreTrainingConfigurations[i].MaxNeurons; neurons += PreTrainingConfigurations[i].NeuronIncrement)
+		StackedDenoisingAutoEncoder sda(random(), datasets.TrainingData().Row() * datasets.TrainingData().Column());
+		for (unsigned int i = 0; i < sizeof(PreTrainingConfigurations) / sizeof(PreTrainingConfigurations[0]); i++)
 		{
-			sda.HiddenLayers.Set(i, neurons);
-			std::cout << "Number of neurons of layer " << i << " is " << neurons << std::endl;
-			std::cout << "... pre-training the model" << std::endl;
-			ValueType costTrain = 0;
-			for (unsigned int epoch = 1; epoch <= PreTrainingEpochs; epoch++)
+			for (unsigned int neurons = PreTrainingConfigurations[i].MinNeurons; neurons <= PreTrainingConfigurations[i].MaxNeurons; neurons += PreTrainingConfigurations[i].NeuronIncrement)
 			{
-				costTrain = sda.HiddenLayers[i].Train(datasets.TrainingData(), PreTrainingLearningRate, PreTrainingConfigurations[i].Noise);
-				std::cout << "Pre-training layer " << i << ", epoch " << epoch << ", cost " << costTrain << std::endl;
+				sda.HiddenLayers.Set(i, neurons);
+				std::cout << "Number of neurons of pre-training layer " << i << " is " << neurons << std::endl;
+				ValueType costTrain = 0;
+				for (unsigned int epoch = 1; epoch <= PreTrainingEpochs; epoch++)
+				{
+					costTrain = sda.HiddenLayers[i].Train(datasets.TrainingData(), PreTrainingLearningRate, PreTrainingConfigurations[i].Noise);
+					std::cout << i << " " << epoch << " " << costTrain << std::endl;
+				}
+				ValueType costTest = sda.HiddenLayers[i].ComputeCost(datasets.TestData(), PreTrainingConfigurations[i].Noise);
+				std::cout << "Pre-training layer " << i << " complete with training cost " << costTrain << ", test cost " << costTest << std::endl;
 			}
-			ValueType costTest = sda.HiddenLayers[i].ComputeCost(datasets.TestData(), PreTrainingConfigurations[i].Noise);
-			std::cout << "Pre-training layer " << i << " complete with training cost " << costTrain << ", test cost " << costTest << std::endl;
 		}
-	}
-	
-	sda.SetLogisticRegressionLayer(datasets.ClassCount);
-	std::cout << "... finetunning the model" << std::endl;
-	Floating testScore = std::numeric_limits<Floating>::infinity();
-	unsigned int bestEpoch = 0;
-	for (unsigned int epoch = 1; epoch <= FineTuningEpochs; epoch++)
-	{
-		sda.FineTune(datasets.TrainingData(), FineTuningLearningRate);
-		Floating thisTestLoss = sda.ComputeErrorRates(datasets.TestData());
-		std::cout << "epoch " << epoch << ", test score " << thisTestLoss * 100.0 << " %" << std::endl;
-		log << epoch << "," << thisTestLoss * 100.0 << std::endl;
-		if (thisTestLoss < testScore)
+
+		sda.SetLogisticRegressionLayer(datasets.ClassCount);
+		std::cout << "... finetunning the model" << std::endl;
+		Floating testScore = std::numeric_limits<Floating>::infinity();
+		unsigned int bestEpoch = 0;
+		for (unsigned int epoch = 1; epoch <= FineTuningEpochs; epoch++)
 		{
-			testScore = thisTestLoss;
-			bestEpoch = epoch;
+			sda.FineTune(datasets.TrainingData(), FineTuningLearningRate);
+			Floating thisTestLoss = sda.ComputeErrorRates(datasets.TestData());
+			std::cout << epoch << " " << thisTestLoss * 100.0 << "%" << std::endl;
+			if (thisTestLoss < testScore)
+			{
+				testScore = thisTestLoss;
+				bestEpoch = epoch;
+			}
 		}
+		std::cout << "Optimization complete with best test score of " << testScore * 100.0 << " %, on epoch " << bestEpoch << std::endl;
 	}
-	std::cout << "Optimization complete with best test score of " << testScore * 100.0 << " %, on epoch " << bestEpoch << std::endl;
 }
