@@ -149,19 +149,21 @@ public:
 		VectorType delta(nOut);
 		return ComputeCost(dataset, noise, [&](const VectorType& image, const VectorType& corrupted, const VectorType& latent, const VectorType& reconstructed)
 		{
-			for (unsigned int i = 0; i < nOut; i++)
+#pragma omp parallel for
+			for (int i = 0; i < static_cast<int>(nOut); i++)
 			{
-				delta[i] = 0;
+				delta[static_cast<unsigned int>(i)] = 0;
 				for (unsigned int j = 0; j < nIn; j++)
-					delta[i] += (reconstructed[j] - image[j]) * Weight[i][j];
-				delta[i] *= differentiatedActivation(latent[i]);
-				Bias[i] -= learningRate * delta[i];
+					delta[static_cast<unsigned int>(i)] += (reconstructed[j] - image[j]) * Weight[static_cast<unsigned int>(i)][j];
+				delta[static_cast<unsigned int>(i)] *= differentiatedActivation(latent[static_cast<unsigned int>(i)]);
+				Bias[static_cast<unsigned int>(i)] -= learningRate * delta[static_cast<unsigned int>(i)];
 			};
-			for (unsigned int j = 0; j < nIn; j++)
+#pragma omp parallel for
+			for (int j = 0; j < static_cast<int>(nIn); j++)
 			{
 				for (unsigned int i = 0; i < nOut; i++)
-					Weight[i][j] -= learningRate * ((reconstructed[j] - image[j]) * latent[i] + delta[i] * corrupted[j]);
-				visibleBias[j] -= learningRate * (reconstructed[j] - image[j]);
+					Weight[i][static_cast<unsigned int>(j)] -= learningRate * ((reconstructed[static_cast<unsigned int>(j)] - image[static_cast<unsigned int>(j)]) * latent[i] + delta[i] * corrupted[static_cast<unsigned int>(j)]);
+				visibleBias[static_cast<unsigned int>(j)] -= learningRate * (reconstructed[static_cast<unsigned int>(j)] - image[static_cast<unsigned int>(j)]);
 			};
 		});
 	}
