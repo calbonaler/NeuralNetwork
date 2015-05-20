@@ -38,33 +38,23 @@ void TestSdA(const LearningSet& datasets)
 			for (unsigned int neurons = PreTrainingConfigurations[i].MinNeurons; neurons <= PreTrainingConfigurations[i].MaxNeurons; neurons += PreTrainingConfigurations[i].NeuronIncrement)
 			{
 				sda.HiddenLayers.Set(i, neurons);
-				std::cout << "Number of neurons of pre-training layer " << i << " is " << neurons << std::endl;
-				ValueType costTrain = 0;
+				std::cout << "\"" << "Number of neurons of pre-training layer " << i << " is " << neurons << "\"" << std::endl;
 				for (unsigned int epoch = 1; epoch <= PreTrainingEpochs; epoch++)
 				{
-					costTrain = sda.HiddenLayers[i].Train(datasets.TrainingData(), PreTrainingLearningRate, PreTrainingConfigurations[i].Noise);
-					std::cout << i << " " << epoch << " " << costTrain << std::endl;
+					ValueType costTrain = sda.HiddenLayers[i].Train(datasets.TrainingData(), PreTrainingLearningRate, PreTrainingConfigurations[i].Noise);
+					ValueType costTest = sda.HiddenLayers[i].ComputeCost(datasets.TestData(), PreTrainingConfigurations[i].Noise);
+					std::cout << epoch << " " << costTrain << " " << costTest << std::endl;
 				}
-				ValueType costTest = sda.HiddenLayers[i].ComputeCost(datasets.TestData(), PreTrainingConfigurations[i].Noise);
-				std::cout << "Pre-training layer " << i << " complete with training cost " << costTrain << ", test cost " << costTest << std::endl;
 			}
 		}
 
 		sda.SetLogisticRegressionLayer(datasets.ClassCount);
-		std::cout << "... finetunning the model" << std::endl;
-		Floating testScore = std::numeric_limits<Floating>::infinity();
-		unsigned int bestEpoch = 0;
+		std::cout << "\"" << "Fine-Tuning..." << "\"" << std::endl;
 		for (unsigned int epoch = 1; epoch <= FineTuningEpochs; epoch++)
 		{
 			sda.FineTune(datasets.TrainingData(), FineTuningLearningRate);
 			Floating thisTestLoss = sda.ComputeErrorRates(datasets.TestData());
 			std::cout << epoch << " " << thisTestLoss * 100.0 << "%" << std::endl;
-			if (thisTestLoss < testScore)
-			{
-				testScore = thisTestLoss;
-				bestEpoch = epoch;
-			}
 		}
-		std::cout << "Optimization complete with best test score of " << testScore * 100.0 << " %, on epoch " << bestEpoch << std::endl;
 	}
 }
