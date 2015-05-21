@@ -200,12 +200,10 @@ private:
 				corrupted[i] = dist(hiddenLayers->GetRandomNumberGenerator()) < noise ? 0 : image[i];
 			Activation(Indexer(Weight, Bias, corrupted), latent);
 			Activation(Indexer(Weight, visibleBias, latent, true), reconstructed);
-			// This cost function may not match to "Soft Plus" activation function.
-			// But I cannot figure out substitute one...
 			cost += CostFunction::BiClassCrossEntropy(image, reconstructed);
 			update(image, corrupted, latent, reconstructed);
 		}
-		return cost / dataset.Count();
+		return cost / nIn / dataset.Count();
 	}
 };
 

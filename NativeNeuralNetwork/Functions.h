@@ -83,14 +83,14 @@ public:
 		ValueType sum = 0;
 		for (unsigned int i = 0; i < source.size(); i++)
 			sum -= target[i] * log(source[i] + static_cast<ValueType>(1e-10)) + (1 - target[i]) * log(1 - source[i] + static_cast<ValueType>(1e-10));
-		return sum / source.size();
+		return sum;
 	}
 	static ValueType MultiClassCrossEntropy(const VectorType& source, const VectorType& target)
 	{
 		ValueType sum = 0;
 		for (unsigned int i = 0; i < source.size(); i++)
 			sum -= target[i] * log(source[i] + static_cast<ValueType>(1e-10));
-		return sum / source.size();
+		return sum;
 	}
 	static ValueType LeastSquaresMethod(const VectorType& source, const VectorType& target)
 	{
@@ -100,6 +100,6 @@ public:
 			ValueType x = source[i] - target[i];
 			sum += x * x;
 		}
-		return sum / 2 / source.size();
+		return sum / 2;
 	}
 };
