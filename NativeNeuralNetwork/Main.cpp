@@ -55,6 +55,7 @@ void TestSdA(const LearningSet& datasets)
 					testCost = sda.HiddenLayers[i].ComputeCost(datasets.TestData(), PreTrainingConfigurations[i].Noise);
 					// TODO: 最終エポックでのテストコストの予測が不完全であるため、早期終了は一時取りやめ
 					// Solve (x[3]^b - x[2]^b) / (x[2]^b - x[1]^b) = (y[3] - y[2]) / (y[2] - y[1]) for b
+					// 代数的に解くことは不可能なので，もし利用するのであれば数値解法を用いる
 					//if (epoch == 3 && i > 0)
 					//{
 					//	ValueType coeff = (testCost - last2EpochTestCost) / (static_cast<ValueType>(1) / epoch - static_cast<ValueType>(1) / (epoch - 2));
