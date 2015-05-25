@@ -18,9 +18,9 @@ const struct
 	Floating Noise;
 } PreTrainingConfigurations[]
 {
-	{ 500, 500, 1, static_cast<Floating>(0.1) },
-	{ 500, 10000, 100, static_cast<Floating>(0.2) },
-	{ 500, 10000, 100, static_cast<Floating>(0.3) },
+	{ 100, 100, 1, static_cast<Floating>(0.1) },
+	{ 100, 100, 100, static_cast<Floating>(0.2) },
+	{ 100, 100, 100, static_cast<Floating>(0.3) },
 };
 
 const int FineTuningEpochs = 30;

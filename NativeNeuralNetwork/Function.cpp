@@ -3,7 +3,7 @@
 ActivationFunction ActivationFunction::_logisticSigmoid([](const Indexer& x, VectorType& res)
 {
 #ifdef NEURALNETWORK_USE_GPU
-	concurrency::array_view<ValueType, 1> resView(res);
+	concurrency::array_view<ValueType, 1> resView(res.size(), &res[0]);
 	resView.discard_data();
 	concurrency::parallel_for(0, static_cast<int>(res.size()), [=](int i) restrict(cpu, amp)
 	{
@@ -20,7 +20,7 @@ ActivationFunction ActivationFunction::_logisticSigmoid([](const Indexer& x, Vec
 ActivationFunction ActivationFunction::_tanh([](const Indexer& x, VectorType& res)
 {
 #ifdef NEURALNETWORK_USE_GPU
-	concurrency::array_view<ValueType, 1> resView(res);
+	concurrency::array_view<ValueType, 1> resView(res.size(), &res[0]);
 	resView.discard_data();
 	concurrency::parallel_for(0, static_cast<int>(res.size()), [=](int i) restrict(cpu, amp)
 	{
@@ -37,7 +37,7 @@ ActivationFunction ActivationFunction::_tanh([](const Indexer& x, VectorType& re
 ActivationFunction ActivationFunction::_rectifiedLinear([](const Indexer& x, VectorType& res)
 {
 #ifdef NEURALNETWORK_USE_GPU
-	concurrency::array_view<ValueType, 1> resView(res);
+	concurrency::array_view<ValueType, 1> resView(res.size(), &res[0]);
 	resView.discard_data();
 	concurrency::parallel_for(0, static_cast<int>(res.size()), [=](int i) restrict(cpu, amp)
 	{
@@ -58,7 +58,7 @@ ActivationFunction ActivationFunction::_rectifiedLinear([](const Indexer& x, Vec
 ActivationFunction ActivationFunction::_softplus([](const Indexer& x, VectorType& res)
 {
 #ifdef NEURALNETWORK_USE_GPU
-	concurrency::array_view<ValueType, 1> resView(res);
+	concurrency::array_view<ValueType, 1> resView(res.size(), &res[0]);
 	resView.discard_data();
 	concurrency::parallel_for(0, static_cast<int>(res.size()), [=](int i) restrict(cpu, amp)
 	{
@@ -79,7 +79,7 @@ ActivationFunction ActivationFunction::_softplus([](const Indexer& x, VectorType
 ActivationFunction ActivationFunction::_identity([](const Indexer& x, VectorType& res)
 {
 #ifdef NEURALNETWORK_USE_GPU
-	concurrency::array_view<ValueType, 1> resView(res);
+	concurrency::array_view<ValueType, 1> resView(res.size(), &res[0]);
 	resView.discard_data();
 	concurrency::parallel_for(0, static_cast<int>(res.size()), [=](int i) restrict(cpu, amp)
 	{
@@ -102,7 +102,7 @@ void ActivationFunction::SoftMax(const Indexer& input, VectorType& result)
 	for (unsigned int i = 0; i < result.size(); i++)
 		sum += result[i] = exp(result[i] - max);
 #ifdef NEURALNETWORK_USE_GPU
-	concurrency::array_view<ValueType, 1> resView(result);
+	concurrency::array_view<ValueType, 1> resView(result.size(), &result[0]);
 	concurrency::parallel_for(0, static_cast<int>(result.size()), [=](int i) restrict(cpu, amp)
 	{
 		resView[i] /= sum;

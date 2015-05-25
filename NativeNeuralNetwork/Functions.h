@@ -2,7 +2,10 @@
 
 #include "Utility.h"
 
-class Indexer : private boost::noncopyable
+class Indexer
+#ifndef NEURALNETWORK_USE_GPU
+	: private boost::noncopyable
+#endif
 {
 public:
 	Indexer(ValueType** weight, const VectorType& bias, const VectorType& input, bool transpose = false) :
@@ -18,7 +21,20 @@ public:
 		_transpose(transpose)
 	{
 	}
+
+#ifdef NEURALNETWORK_USE_GPU
+	Indexer(const Indexer& right) : _weight(right._weight), _bias(right._bias), _input(right._input), _transpose(right._transpose) { }
 	
+	Indexer& operator=(const Indexer& right)
+	{
+		_weight = right._weight;
+		_bias = right._bias;
+		_input = right._input;
+		_transpose = right._transpose;
+		return *this;
+	}
+#endif
+
 	ValueType operator()(unsigned int index) const
 #ifdef NEURALNETWORK_USE_GPU
 		restrict(cpu, amp)
