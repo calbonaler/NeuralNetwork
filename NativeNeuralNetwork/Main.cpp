@@ -1,4 +1,5 @@
 ﻿#include "StackedDenoisingAutoEncoder.h"
+#include "ShiftRegister.h"
 
 void TestSdA(const LearningSet& datasets);
 
@@ -41,18 +42,15 @@ void TestSdA(const LearningSet& datasets)
 		ValueType lastLayerTestCost = 0;
 		for (unsigned int i = 0; i < sizeof(PreTrainingConfigurations) / sizeof(PreTrainingConfigurations[0]); i++)
 		{
-			ValueType testCost = 0;
+			ShiftRegister<ValueType, 3> testCosts;
 			for (unsigned int neurons = PreTrainingConfigurations[i].MinNeurons; neurons <= PreTrainingConfigurations[i].MaxNeurons; neurons += PreTrainingConfigurations[i].NeuronIncrement)
 			{
 				sda.HiddenLayers.Set(i, neurons);
 				std::cout << "\"" << "Number of neurons of pre-training layer " << i << " is " << neurons << "\"" << std::endl;
-				//ValueType lastEpochTestCost = 0;
 				for (unsigned int epoch = 1; epoch <= PreTrainingEpochs; epoch++)
 				{
-					//ValueType last2EpochTestCost = lastEpochTestCost;
-					//lastEpochTestCost = testCost;
 					ValueType trainCost = sda.HiddenLayers[i].Train(datasets.TrainingData(), PreTrainingLearningRate, PreTrainingConfigurations[i].Noise);
-					testCost = sda.HiddenLayers[i].ComputeCost(datasets.TestData(), PreTrainingConfigurations[i].Noise);
+					testCosts.Push(sda.HiddenLayers[i].ComputeCost(datasets.TestData(), PreTrainingConfigurations[i].Noise));
 					// TODO: 最終エポックでのテストコストの予測が不完全であるため、早期終了は一時取りやめ
 					// Solve (x[3]^b - x[2]^b) / (x[2]^b - x[1]^b) = (y[3] - y[2]) / (y[2] - y[1]) for b
 					// 代数的に解くことは不可能なので，もし利用するのであれば数値解法を用いる
@@ -66,13 +64,13 @@ void TestSdA(const LearningSet& datasets)
 					//		goto increaseNeuron;
 					//}
 					//else
-					std::cout << epoch << " " << trainCost << " " << testCost << " none" << std::endl;
+					std::cout << epoch << " " << trainCost << " " << testCosts[-1] << " none" << std::endl;
 				}
-				if (testCost <= lastLayerTestCost)
+				if (testCosts[-1] <= lastLayerTestCost)
 					break;
 			increaseNeuron:;
 			}
-			lastLayerTestCost = testCost;
+			lastLayerTestCost = testCosts[-1];
 		}
 
 		sda.SetLogisticRegressionLayer(datasets.ClassCount);

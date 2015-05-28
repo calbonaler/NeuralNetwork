@@ -1,4 +1,6 @@
-﻿#include "Functions.h"
+﻿#pragma once
+
+#include "Functions.h"
 #include "LearningSet.h"
 
 #pragma warning (push)
