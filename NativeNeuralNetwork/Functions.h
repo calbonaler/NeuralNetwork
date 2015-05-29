@@ -3,26 +3,16 @@
 #include "Utility.h"
 
 class Indexer
-#ifndef NEURALNETWORK_USE_GPU
-	: private boost::noncopyable
-#endif
 {
 public:
 	Indexer(ValueType** weight, const VectorType& bias, const VectorType& input, bool transpose = false) :
-#ifdef NEURALNETWORK_USE_GPU
 		_weight(static_cast<int>(bias.size()), static_cast<int>(input.size()), weight[0]),
-		_bias(static_cast<int>(bias.size()), &const_cast<VectorType&>(bias)[0]),
-		_input(static_cast<int>(input.size()), &const_cast<VectorType&>(input)[0]),
-#else
-		_weight(weight),
-		_bias(bias),
-		_input(input),
-#endif
+		_bias(static_cast<int>(bias.size()), &bias[0]),
+		_input(static_cast<int>(input.size()), &input[0]),
 		_transpose(transpose)
 	{
 	}
 
-#ifdef NEURALNETWORK_USE_GPU
 	Indexer(const Indexer& right) : _weight(right._weight), _bias(right._bias), _input(right._input), _transpose(right._transpose) { }
 	
 	Indexer& operator=(const Indexer& right)
@@ -33,35 +23,19 @@ public:
 		_transpose = right._transpose;
 		return *this;
 	}
-#endif
 
-	ValueType operator()(unsigned int index) const
-#ifdef NEURALNETWORK_USE_GPU
-		restrict(cpu, amp)
-#endif
+	ValueType operator()(concurrency::index<1> index) const restrict(cpu, amp)
 	{
-		ValueType ret = 0;
-#ifdef NEURALNETWORK_USE_GPU
+		ValueType ret = _bias[index];
 		for (int k = 0; k < _weight.extent[1]; k++)
-			ret += _input[k] * (_transpose ? _weight[k][static_cast<int>(index)] : _weight[static_cast<int>(index)][k]);
-		return ret + _bias[static_cast<int>(index)];
-#else
-		for (unsigned int k = 0; k < _input.size(); k++)
-			ret += _input[k] * (_transpose ? _weight[k][index] : _weight[index][k]);
-		return ret + _bias[index];
-#endif
+			ret += _input[k] * (_transpose ? _weight[k][index[0]] : _weight[index[0]][k]);
+		return ret;
 	}
 
 private:
-#ifdef NEURALNETWORK_USE_GPU
-	concurrency::array_view<ValueType, 2> _weight;
-	concurrency::array_view<ValueType, 1> _bias;
-	concurrency::array_view<ValueType, 1> _input;
-#else
-	ValueType** _weight;
-	const VectorType& _bias;
-	const VectorType& _input;
-#endif
+	concurrency::array_view<const ValueType, 2> _weight;
+	concurrency::array_view<const ValueType, 1> _bias;
+	concurrency::array_view<const ValueType, 1> _input;
 	bool _transpose;
 };
 
