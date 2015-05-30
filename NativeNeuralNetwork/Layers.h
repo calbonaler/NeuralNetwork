@@ -33,7 +33,8 @@ public:
 	VectorType Compute(const VectorType& input) const
 	{
 		VectorType output(nOut);
-		Activation(Indexer(Weight, Bias, input), output);
+		concurrency::array_view<ValueType, 1> outputView(static_cast<int>(output.size()), &output[0]);
+		Activation(Indexer(Weight, Bias, input), outputView);
 		return std::move(output);
 	}
 
@@ -118,12 +119,28 @@ public:
 class HiddenLayer : public Layer
 {
 public:
+	/// <summary>この層から雑音除去自己符号化器を構成し、指定されたデータセットを使用して訓練した結果のコストを返します。</summary>
+	/// <param name="dataset">訓練に使用するデータセットを指定します。</param>
+	/// <param name="learningRate">学習率を指定します。</param>
+	/// <param name="noise">構成された雑音除去自己符号化器の入力を生成する際のデータの欠損率を指定します。</param>
+	/// <returns>構成された雑音除去自己符号化器の入力に対するコスト。</returns>
+	virtual ValueType Train(const DataSet& dataset, ValueType learningRate, Floating noise) = 0;
+
+	/// <summary>この層から雑音除去自己符号化器を構成し、指定されたデータセットのコストを計算します。</summary>
+	/// <param name="dataset">コストを計算するデータセットを指定します。</param>
+	/// <param name="noise">構成された雑音除去自己符号化器の入力を生成する際のデータの欠損率を指定します。</param>
+	/// <returns>構成された雑音除去自己符号化器の入力に対するコスト。</returns>
+	ValueType ComputeCost(const DataSet& dataset, Floating noise) const { return ComputeCost(dataset, noise, [](const VectorType&, const VectorType&, const VectorType&, const VectorType&) { }); }
+
+protected:
+	VectorType visibleBias;
+
 	/// <summary><see cref="HiddenLayer"/> クラスを入出力の次元数、活性化関数および下層を使用して初期化します。</summary>
 	/// <param name="nIn">入力の次元数を指定します。</param>
 	/// <param name="nOut">隠れ素子の数を指定します。</param>
 	/// <param name="activation">隠れ層に適用される活性化関数を指定します。</param>
 	/// <param name="hiddenLayers">この隠れ層が所属している Stacked Denoising Auto-Encoder のすべての隠れ層を表すリストを指定します。</param>
-	HiddenLayer(unsigned int nIn, unsigned int nOut, const ActivationFunction* activation, IHiddenLayerCollection* hiddenLayers) : Layer(nIn, nOut, activation->Normal), differentiatedActivation(activation->Differentiated), visibleBias(static_cast<ValueType>(0), nIn), hiddenLayers(hiddenLayers)
+	HiddenLayer(unsigned int nIn, unsigned int nOut, const ActivationFunction::NormalForm& activation, IHiddenLayerCollection* hiddenLayers) : Layer(nIn, nOut, activation), visibleBias(static_cast<ValueType>(0), nIn), hiddenLayers(hiddenLayers)
 	{
 		if (!activation)
 			throw std::invalid_argument("activation must not be null pointer");
@@ -135,58 +152,11 @@ public:
 			for (unsigned int i = 0; i < nIn; i++)
 			{
 				Weight[j][i] = (2 * dist(hiddenLayers->GetRandomNumberGenerator()) - 1) * sqrt(static_cast<ValueType>(6.0) / (nIn + nOut));
-				if (activation == ActivationFunction::LogisticSigmoid())
+				if (activation == ActivationFunction::LogisticSigmoid)
 					Weight[j][i] *= 4;
 			}
 		}
 	}
-
-	/// <summary>この層から雑音除去自己符号化器を構成し、指定されたデータセットを使用して訓練した結果のコストを返します。</summary>
-	/// <param name="dataset">訓練に使用するデータセットを指定します。</param>
-	/// <param name="learningRate">学習率を指定します。</param>
-	/// <param name="noise">構成された雑音除去自己符号化器の入力を生成する際のデータの欠損率を指定します。</param>
-	/// <returns>構成された雑音除去自己符号化器の入力に対するコスト。</returns>
-	ValueType Train(const DataSet& dataset, ValueType learningRate, Floating noise)
-	{
-		VectorType delta(nOut);
-		return ComputeCost(dataset, noise, [&](const VectorType& image, const VectorType& corrupted, const VectorType& latent, const VectorType& reconstructed)
-		{
-#pragma omp parallel for
-			for (int i = 0; i < static_cast<int>(nOut); i++)
-			{
-				delta[static_cast<unsigned int>(i)] = 0;
-				for (unsigned int j = 0; j < nIn; j++)
-					delta[static_cast<unsigned int>(i)] += (reconstructed[j] - image[j]) * Weight[static_cast<unsigned int>(i)][j];
-				delta[static_cast<unsigned int>(i)] *= differentiatedActivation(latent[static_cast<unsigned int>(i)]);
-				Bias[static_cast<unsigned int>(i)] -= learningRate * delta[static_cast<unsigned int>(i)];
-			};
-#pragma omp parallel for
-			for (int j = 0; j < static_cast<int>(nIn); j++)
-			{
-				for (unsigned int i = 0; i < nOut; i++)
-					Weight[i][static_cast<unsigned int>(j)] -= learningRate * ((reconstructed[static_cast<unsigned int>(j)] - image[static_cast<unsigned int>(j)]) * latent[i] + delta[i] * corrupted[static_cast<unsigned int>(j)]);
-				visibleBias[static_cast<unsigned int>(j)] -= learningRate * (reconstructed[static_cast<unsigned int>(j)] - image[static_cast<unsigned int>(j)]);
-			};
-		});
-	}
-
-	/// <summary>この層から雑音除去自己符号化器を構成し、指定されたデータセットのコストを計算します。</summary>
-	/// <param name="dataset">コストを計算するデータセットを指定します。</param>
-	/// <param name="noise">構成された雑音除去自己符号化器の入力を生成する際のデータの欠損率を指定します。</param>
-	/// <returns>構成された雑音除去自己符号化器の入力に対するコスト。</returns>
-	ValueType ComputeCost(const DataSet& dataset, Floating noise) const { return ComputeCost(dataset, noise, [](const VectorType&, const VectorType&, const VectorType&, const VectorType&) { }); }
-
-protected:
-	/// <summary>この層の線形計算の結果に対するニューラルネットワークのコストの勾配ベクトル (Delta) の要素を計算します。</summary>
-	/// <param name="output">この層からの出力を示すベクトルの要素を指定します。</param>
-	/// <param name="upperInfo">上位層から得られた勾配計算に必要な情報を指定します。この層が出力層の場合、これは教師信号になります。</param>
-	/// <returns>勾配ベクトルの要素。</returns>
-	ValueType GetDelta(ValueType output, ValueType upperInfo) const { return upperInfo * differentiatedActivation(output); }
-
-private:
-	const ActivationFunction::DifferentiatedForm differentiatedActivation;
-	IHiddenLayerCollection* const hiddenLayers;
-	VectorType visibleBias;
 
 	ValueType ComputeCost(const DataSet& dataset, Floating noise, const std::function<void(const VectorType&, const VectorType&, const VectorType&, const VectorType&)>& update) const
 	{
@@ -200,14 +170,94 @@ private:
 			auto image = hiddenLayers->Compute(dataset.Images()[n], this);
 			for (unsigned int i = 0; i < nIn; i++)
 				corrupted[i] = dist(hiddenLayers->GetRandomNumberGenerator()) < noise ? 0 : image[i];
-			Activation(Indexer(Weight, Bias, corrupted), latent);
-			Activation(Indexer(Weight, visibleBias, latent, true), reconstructed);
-			cost += CostFunction::BiClassCrossEntropy(image, reconstructed);
+			concurrency::array_view<ValueType, 1> latentView(static_cast<int>(latent.size()), &latent[0]);
+			concurrency::array_view<ValueType, 1> reconstructedView(static_cast<int>(reconstructed.size()), &reconstructed[0]);
+			Activation(Indexer(Weight, Bias, corrupted), latentView);
+			latentView.synchronize();
+			Activation(Indexer(Weight, visibleBias, latent, true), reconstructedView);
+			reconstructedView.synchronize();
 			update(image, corrupted, latent, reconstructed);
+			cost += CostFunction::BiClassCrossEntropy(image, reconstructed);
 		}
 		return cost / nIn / dataset.Count();
 	}
+
+	
+private:
+	IHiddenLayerCollection* const hiddenLayers;
 };
+
+template <class T> class HiddenLayerTyped : public HiddenLayer
+{
+public:
+	/// <summary><see cref="HiddenLayer"/> クラスを入出力の次元数、活性化関数および下層を使用して初期化します。</summary>
+	/// <param name="nIn">入力の次元数を指定します。</param>
+	/// <param name="nOut">隠れ素子の数を指定します。</param>
+	/// <param name="activation">隠れ層に適用される活性化関数を指定します。</param>
+	/// <param name="differentiatedActivation">隠れ層に適用される活性化関数の微分を指定します。</param>
+	/// <param name="hiddenLayers">この隠れ層が所属している Stacked Denoising Auto-Encoder のすべての隠れ層を表すリストを指定します。</param>
+	HiddenLayerTyped(unsigned int nIn, unsigned int nOut, const ActivationFunction::NormalForm& activation, T differentiatedActivation, IHiddenLayerCollection* hiddenLayers) : HiddenLayer(nIn, nOut, activation, hiddenLayers), differentiatedActivation(differentiatedActivation) { }
+
+	/// <summary>この層から雑音除去自己符号化器を構成し、指定されたデータセットを使用して訓練した結果のコストを返します。</summary>
+	/// <param name="dataset">訓練に使用するデータセットを指定します。</param>
+	/// <param name="learningRate">学習率を指定します。</param>
+	/// <param name="noise">構成された雑音除去自己符号化器の入力を生成する際のデータの欠損率を指定します。</param>
+	/// <returns>構成された雑音除去自己符号化器の入力に対するコスト。</returns>
+	ValueType Train(const DataSet& dataset, ValueType learningRate, Floating noise)
+	{
+		return ComputeCost(dataset, noise, [&](const VectorType& image, const VectorType& corrupted, const VectorType& latent, const VectorType& reconstructed)
+		{
+			concurrency::array_view<ValueType, 2> weightView(static_cast<int>(nOut), static_cast<int>(nIn), Weight[0]);
+			concurrency::array_view<ValueType, 1> biasView(static_cast<int>(Bias.size()), &Bias[0]);
+			concurrency::array_view<ValueType, 1> visibleBiasView(static_cast<int>(visibleBias.size()), &visibleBias[0]);
+
+			concurrency::array_view<const ValueType, 1> imageView(static_cast<int>(image.size()), &image[0]);
+			concurrency::array_view<const ValueType, 1> corruptedView(static_cast<int>(corrupted.size()), &corrupted[0]);
+			concurrency::array_view<const ValueType, 1> latentView(static_cast<int>(latent.size()), &latent[0]);
+			concurrency::array_view<const ValueType, 1> reconstructedView(static_cast<int>(reconstructed.size()), &reconstructed[0]);
+
+			concurrency::array<ValueType, 1> delta(static_cast<int>(nOut));
+			concurrency::array_view<ValueType, 1> deltaView = delta;
+			deltaView.discard_data();
+
+			T differentiatedActivationLocal = differentiatedActivationLocal;
+
+			concurrency::parallel_for_each(biasView.extent, [=](concurrency::index<1> i) restrict(amp)
+			{
+				deltaView[i] = 0;
+				for (int j = 0; j < weightView.extent[1]; j++)
+					deltaView[i] += (reconstructedView[j] - imageView[j]) * weightView[i[0]][j];
+				deltaView[i] *= differentiatedActivationLocal(latentView[i]);
+				biasView[i] -= learningRate * deltaView[i];
+			});
+
+			concurrency::parallel_for_each(visibleBiasView.extent, [=](concurrency::index<1> j) restrict(amp)
+			{
+				for (int i = 0; i < deltaView.extent[0]; i++)
+					weightView[i][j[0]] -= learningRate * ((reconstructedView[j] - imageView[j]) * latentView[i] + deltaView[i] * corruptedView[j]);
+				visibleBiasView[j] -= learningRate * (reconstructedView[j] - imageView[j]);
+			});
+		});
+	}
+
+protected:
+	/// <summary>この層の線形計算の結果に対するニューラルネットワークのコストの勾配ベクトル (Delta) の要素を計算します。</summary>
+	/// <param name="output">この層からの出力を示すベクトルの要素を指定します。</param>
+	/// <param name="upperInfo">上位層から得られた勾配計算に必要な情報を指定します。この層が出力層の場合、これは教師信号になります。</param>
+	/// <returns>勾配ベクトルの要素。</returns>
+	ValueType GetDelta(ValueType output, ValueType upperInfo) const { return upperInfo * differentiatedActivation(output); }
+
+private:
+	const T differentiatedActivation;
+};
+
+template <class T> static HiddenLayerTyped<T>* CreateHiddenLayerPointerInternal(unsigned int nIn, unsigned int nOut, const ActivationFunction::NormalForm& activation, T differentiatedActivation, IHiddenLayerCollection* hiddenLayers)
+{
+	return new HiddenLayerTyped<T>(nIn, nOut, activation, differentiatedActivation, hiddenLayers);
+}
+
+#define CreateHiddenLayerPointer(nIn, nOut, activation, hiddenLayers) \
+	CreateHiddenLayerPointerInternal(nIn, nOut, activation, [](ValueType x) restrict(cpu, amp) { return activation ## Differentiated (x); }, hiddenLayers)
 
 /// <summary>隠れ層のコレクションを表します。</summary>
 class HiddenLayerCollection : public IHiddenLayerCollection, private boost::noncopyable
@@ -244,13 +294,13 @@ public:
 			throw std::out_of_range("index less than or equal to Count()");
 		if (index == items.size())
 		{
-			items.push_back(std::unique_ptr<HiddenLayer>(new HiddenLayer(nextLayerInputUnits, neurons, ActivationFunction::LogisticSigmoid(), this)));
+			items.push_back(std::unique_ptr<HiddenLayer>(CreateHiddenLayerPointer(nextLayerInputUnits, neurons, ActivationFunction::LogisticSigmoid, this)));
 			nextLayerInputUnits = neurons;
 			return;
 		}
-		items[index] = std::unique_ptr<HiddenLayer>(new HiddenLayer(items[index]->nIn, neurons, ActivationFunction::LogisticSigmoid(), this));
+		items[index] = std::unique_ptr<HiddenLayer>(CreateHiddenLayerPointer(items[index]->nIn, neurons, ActivationFunction::LogisticSigmoid, this));
 		if (index < items.size() - 1)
-			items[index + 1] = std::unique_ptr<HiddenLayer>(new HiddenLayer(neurons, items[index + 1]->nOut, ActivationFunction::LogisticSigmoid(), this));
+			items[index + 1] = std::unique_ptr<HiddenLayer>(CreateHiddenLayerPointer(neurons, items[index + 1]->nOut, ActivationFunction::LogisticSigmoid, this));
 	}
 
 	/// <summary>このコレクションを固定して変更不可能にします。</summary>

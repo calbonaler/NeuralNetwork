@@ -125,7 +125,7 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>false</SDLCheck>
-      <DisableSpecificWarnings>4350;4351;4514;4710;4820;4711;4625;4626;4668</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4350;4351;4505;4514;4710;4820;4711;4625;4626;4668</DisableSpecificWarnings>
       <ForcedIncludeFiles>stdafx.h</ForcedIncludeFiles>
       <OpenMPSupport>
       </OpenMPSupport>
@@ -142,7 +142,7 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>false</SDLCheck>
-      <DisableSpecificWarnings>4350;4351;4514;4710;4820;4711;4625;4626;4668</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4350;4351;4505;4514;4710;4820;4711;4625;4626;4668</DisableSpecificWarnings>
       <ForcedIncludeFiles>stdafx.h</ForcedIncludeFiles>
       <OpenMPSupport>
       </OpenMPSupport>
@@ -161,7 +161,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>false</SDLCheck>
-      <DisableSpecificWarnings>4350;4351;4514;4710;4820;4711;4625;4626;4668</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4350;4351;4505;4514;4710;4820;4711;4625;4626;4668</DisableSpecificWarnings>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
       <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
@@ -184,7 +184,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_LIB;NEURALNETWORK_USE_GPU;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>false</SDLCheck>
-      <DisableSpecificWarnings>4350;4351;4514;4710;4820;4711;4625;4626;4668</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4350;4351;4505;4514;4710;4820;4711;4625;4626;4668</DisableSpecificWarnings>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
       <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
@@ -207,7 +207,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>false</SDLCheck>
-      <DisableSpecificWarnings>4350;4351;4514;4710;4820;4711;4625;4626;4668</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4350;4351;4505;4514;4710;4820;4711;4625;4626;4668</DisableSpecificWarnings>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
       <EnableEnhancedInstructionSet>NotSet</EnableEnhancedInstructionSet>
@@ -230,7 +230,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_LIB;NEURALNETWORK_USE_GPU;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>false</SDLCheck>
-      <DisableSpecificWarnings>4350;4351;4514;4710;4820;4711;4625;4626;4668</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4350;4351;4505;4514;4710;4820;4711;4625;4626;4668</DisableSpecificWarnings>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
       <EnableEnhancedInstructionSet>NotSet</EnableEnhancedInstructionSet>
@@ -254,7 +254,6 @@
     <ClInclude Include="Utility.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Function.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
