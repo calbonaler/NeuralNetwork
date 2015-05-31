@@ -32,9 +32,11 @@ public:
 	/// <returns>この層の出力を示すベクトル。</returns>
 	VectorType Compute(const VectorType& input) const
 	{
+		concurrency::array<ValueType> inputArray(static_cast<int>(nIn), &input[0]);
+		concurrency::array<ValueType> outputArray(static_cast<int>(nOut));
+		Activation(GetWeightAsArrayView(), false, GetBiasAsArrayView(), inputArray, outputArray);
 		VectorType output(nOut);
-		concurrency::array_view<ValueType, 1> outputView(static_cast<int>(output.size()), &output[0]);
-		Activation(Indexer(Weight, Bias, input), outputView);
+		concurrency::copy(outputArray, &output[0]);
 		return std::move(output);
 	}
 
@@ -73,6 +75,14 @@ protected:
 		for (unsigned int i = 1; i < nOut; i++)
 			Weight[i] = Weight[i - 1] + nIn;
 	}
+
+	concurrency::array_view<const ValueType, 2> GetWeightAsArrayView() const { return std::move(concurrency::array_view<const ValueType, 2>(static_cast<int>(nOut), static_cast<int>(nIn), Weight[0])); }
+
+	concurrency::array_view<ValueType, 2> GetWeightAsArrayView() { return std::move(concurrency::array_view<ValueType, 2>(static_cast<int>(nOut), static_cast<int>(nIn), Weight[0])); }
+
+	concurrency::array_view<const ValueType> GetBiasAsArrayView() const { return std::move(concurrency::array_view<const ValueType>(static_cast<int>(Bias.size()), &Bias[0])); }
+
+	concurrency::array_view<ValueType> GetBiasAsArrayView() { return std::move(concurrency::array_view<ValueType>(static_cast<int>(Bias.size()), &Bias[0])); }
 
 	/// <summary>この層の線形計算の結果に対するニューラルネットワークのコストの勾配ベクトル (Delta) の要素を計算します。</summary>
 	/// <param name="output">この層からの出力を示すベクトルの要素を指定します。</param>
@@ -130,7 +140,7 @@ public:
 	/// <param name="dataset">コストを計算するデータセットを指定します。</param>
 	/// <param name="noise">構成された雑音除去自己符号化器の入力を生成する際のデータの欠損率を指定します。</param>
 	/// <returns>構成された雑音除去自己符号化器の入力に対するコスト。</returns>
-	ValueType ComputeCost(const DataSet& dataset, Floating noise) const { return ComputeCost(dataset, noise, [](const VectorType&, const VectorType&, const VectorType&, const VectorType&) { }); }
+	ValueType ComputeCost(const DataSet& dataset, Floating noise) const { return ComputeCost(dataset, noise, [](const VectorType&, const concurrency::array<ValueType>&, const concurrency::array<ValueType>&, const concurrency::array<ValueType>&) { }); }
 
 protected:
 	VectorType visibleBias;
@@ -158,26 +168,25 @@ protected:
 		}
 	}
 
-	ValueType ComputeCost(const DataSet& dataset, Floating noise, const std::function<void(const VectorType&, const VectorType&, const VectorType&, const VectorType&)>& update) const
+	ValueType ComputeCost(const DataSet& dataset, Floating noise, const std::function<void(const VectorType&, const concurrency::array<ValueType>&, const concurrency::array<ValueType>&, const concurrency::array<ValueType>&)>& update) const
 	{
 		std::uniform_real_distribution<Floating> dist(0, 1);
-		VectorType corrupted(nIn);
-		VectorType latent(nOut);
-		VectorType reconstructed(nIn);
 		ValueType cost = 0;
 		for (unsigned int n = 0; n < dataset.Count(); n++)
 		{
 			auto image = hiddenLayers->Compute(dataset.Images()[n], this);
+			VectorType corruptedCpu(nIn);
 			for (unsigned int i = 0; i < nIn; i++)
-				corrupted[i] = dist(hiddenLayers->GetRandomNumberGenerator()) < noise ? 0 : image[i];
-			concurrency::array_view<ValueType, 1> latentView(static_cast<int>(latent.size()), &latent[0]);
-			concurrency::array_view<ValueType, 1> reconstructedView(static_cast<int>(reconstructed.size()), &reconstructed[0]);
-			Activation(Indexer(Weight, Bias, corrupted), latentView);
-			latentView.synchronize();
-			Activation(Indexer(Weight, visibleBias, latent, true), reconstructedView);
-			reconstructedView.synchronize();
+				corruptedCpu[i] = dist(hiddenLayers->GetRandomNumberGenerator()) < noise ? 0 : image[i];
+			concurrency::array<ValueType> corrupted(static_cast<int>(corruptedCpu.size()), &corruptedCpu[0]);
+			concurrency::array<ValueType> latent(static_cast<int>(nOut));
+			concurrency::array<ValueType> reconstructed(static_cast<int>(nIn));
+			Activation(GetWeightAsArrayView(), false, GetBiasAsArrayView(), corrupted, latent);
+			Activation(GetWeightAsArrayView(), true, GetBiasAsArrayView(), latent, reconstructed);
 			update(image, corrupted, latent, reconstructed);
-			cost += CostFunction::BiClassCrossEntropy(image, reconstructed);
+			VectorType reconstructedCpu(nIn);
+			concurrency::copy(reconstructed, &reconstructedCpu[0]);
+			cost += CostFunction::BiClassCrossEntropy(image, reconstructedCpu);
 		}
 		return cost / nIn / dataset.Count();
 	}
@@ -205,37 +214,32 @@ public:
 	/// <returns>構成された雑音除去自己符号化器の入力に対するコスト。</returns>
 	ValueType Train(const DataSet& dataset, ValueType learningRate, Floating noise)
 	{
-		return ComputeCost(dataset, noise, [&](const VectorType& image, const VectorType& corrupted, const VectorType& latent, const VectorType& reconstructed)
+		return ComputeCost(dataset, noise, [&](const VectorType& image, const concurrency::array<ValueType>& corrupted, const concurrency::array<ValueType>& latent, const concurrency::array<ValueType>& reconstructed)
 		{
-			concurrency::array_view<ValueType, 2> weightView(static_cast<int>(nOut), static_cast<int>(nIn), Weight[0]);
-			concurrency::array_view<ValueType, 1> biasView(static_cast<int>(Bias.size()), &Bias[0]);
-			concurrency::array_view<ValueType, 1> visibleBiasView(static_cast<int>(visibleBias.size()), &visibleBias[0]);
+			auto weightView = GetWeightAsArrayView();
+			auto biasView = GetBiasAsArrayView();
+			concurrency::array_view<ValueType> visibleBiasView(static_cast<int>(visibleBias.size()), &visibleBias[0]);
 
-			concurrency::array_view<const ValueType, 1> imageView(static_cast<int>(image.size()), &image[0]);
-			concurrency::array_view<const ValueType, 1> corruptedView(static_cast<int>(corrupted.size()), &corrupted[0]);
-			concurrency::array_view<const ValueType, 1> latentView(static_cast<int>(latent.size()), &latent[0]);
-			concurrency::array_view<const ValueType, 1> reconstructedView(static_cast<int>(reconstructed.size()), &reconstructed[0]);
+			concurrency::array_view<const ValueType> imageView(static_cast<int>(image.size()), &image[0]);
 
-			concurrency::array<ValueType, 1> delta(static_cast<int>(nOut));
-			concurrency::array_view<ValueType, 1> deltaView = delta;
-			deltaView.discard_data();
+			concurrency::array<ValueType> delta(static_cast<int>(nOut));
 
-			T differentiatedActivationLocal = differentiatedActivationLocal;
+			T differentiatedActivationLocal = differentiatedActivation;
 
-			concurrency::parallel_for_each(biasView.extent, [=](concurrency::index<1> i) restrict(amp)
+			concurrency::parallel_for_each(biasView.extent, [=, &latent, &reconstructed, &delta](concurrency::index<1> i) restrict(amp)
 			{
-				deltaView[i] = 0;
+				delta[i] = 0;
 				for (int j = 0; j < weightView.extent[1]; j++)
-					deltaView[i] += (reconstructedView[j] - imageView[j]) * weightView[i[0]][j];
-				deltaView[i] *= differentiatedActivationLocal(latentView[i]);
-				biasView[i] -= learningRate * deltaView[i];
+					delta[i] += (reconstructed[j] - imageView[j]) * weightView[i[0]][j];
+				delta[i] *= differentiatedActivationLocal(latent[i]);
+				biasView[i] -= learningRate * delta[i];
 			});
 
-			concurrency::parallel_for_each(visibleBiasView.extent, [=](concurrency::index<1> j) restrict(amp)
+			concurrency::parallel_for_each(visibleBiasView.extent, [=, &corrupted, &latent, &reconstructed, &delta](concurrency::index<1> j) restrict(amp)
 			{
-				for (int i = 0; i < deltaView.extent[0]; i++)
-					weightView[i][j[0]] -= learningRate * ((reconstructedView[j] - imageView[j]) * latentView[i] + deltaView[i] * corruptedView[j]);
-				visibleBiasView[j] -= learningRate * (reconstructedView[j] - imageView[j]);
+				for (int i = 0; i < delta.extent[0]; i++)
+					weightView[i][j[0]] -= learningRate * ((reconstructed[j] - imageView[j]) * latent[i] + delta[i] * corrupted[j]);
+				visibleBiasView[j] -= learningRate * (reconstructed[j] - imageView[j]);
 			});
 		});
 	}
