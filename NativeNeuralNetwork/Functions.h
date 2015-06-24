@@ -41,10 +41,11 @@ struct ActivationFunction
 	static ValueType IdentityDifferentiated(ValueType) restrict(cpu, amp) { return 1; }
 	static void SoftMax(const concurrency::array_view<const ValueType, 2>& weight, bool transposed, const concurrency::array_view<const ValueType>& bias, const concurrency::array<ValueType>& input, concurrency::array<ValueType>& result)
 	{
+		concurrency::parallel_for_each(result.extent, [=, &input, &result](concurrency::index<1> i) restrict(amp) { result[i] = ComputeNeuron(weight, transposed, bias, input, i); });
 		concurrency::array_view<ValueType> resultView = result;
 		ValueType max = -std::numeric_limits<ValueType>::infinity();
 		for (int i = 0; i < resultView.extent[0]; i++)
-			max = (std::max)(resultView[i] = ComputeNeuron(weight, transposed, bias, input, concurrency::index<1>(i)), max);
+			max = (std::max)(resultView[i], max);
 		ValueType sum = 0;
 		for (int i = 0; i < resultView.extent[0]; i++)
 			sum += resultView[i] = concurrency::fast_math::exp(resultView[i] - max);
@@ -53,7 +54,7 @@ struct ActivationFunction
 	}
 
 private:
-	static ValueType ComputeNeuron(const concurrency::array_view<const ValueType, 2>& weight, bool transposed, const concurrency::array_view<const ValueType>& bias, const concurrency::array<ValueType>& input, concurrency::index<1> index) restrict(cpu, amp)
+	static ValueType ComputeNeuron(const concurrency::array_view<const ValueType, 2>& weight, bool transposed, const concurrency::array_view<const ValueType>& bias, const concurrency::array<ValueType>& input, concurrency::index<1> index) restrict(amp)
 	{
 		ValueType ret = bias[index];
 		for (int k = 0; k < input.extent[0]; k++)

@@ -182,7 +182,7 @@ protected:
 			concurrency::array<ValueType> latent(static_cast<int>(nOut));
 			concurrency::array<ValueType> reconstructed(static_cast<int>(nIn));
 			Activation(GetWeightAsArrayView(), false, GetBiasAsArrayView(), corrupted, latent);
-			Activation(GetWeightAsArrayView(), true, GetBiasAsArrayView(), latent, reconstructed);
+			Activation(GetWeightAsArrayView(), true, concurrency::array_view<const ValueType>(static_cast<int>(visibleBias.size()), &visibleBias[0]), latent, reconstructed);
 			update(image, corrupted, latent, reconstructed);
 			VectorType reconstructedCpu(nIn);
 			concurrency::copy(reconstructed, &reconstructedCpu[0]);
