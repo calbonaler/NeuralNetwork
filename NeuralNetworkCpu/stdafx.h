@@ -9,7 +9,9 @@
 #include <limits>
 #include <memory>
 #include <random>
+#include <sstream>
 #include <string>
+#include <type_traits>
 #include <valarray>
 #include <vector>
 
@@ -21,3 +23,4 @@
 // Boost
 
 #include <boost/core/noncopyable.hpp>
+#include <boost/format.hpp>

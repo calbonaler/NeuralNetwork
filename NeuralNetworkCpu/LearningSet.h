@@ -3,7 +3,7 @@
 #include "Utility.h"
 
 /// <summary>学習および識別に使用されるデータセットを表します。</summary>
-class DataSet
+class DataSet final
 {
 public:
 	/// <summary><see cref="DataSet"/> クラスの新しいインスタンスを初期化します。</summary>
@@ -80,6 +80,15 @@ public:
 		column = newColumn;
 	}
 
+	/// <summary>画像の垂直および水平方向の長さを設定します。</summary>
+	/// <param name="newRow">画像の垂直方向の長さを指定します。</param>
+	/// <param name="newColumn">画像の水平方向の長さを指定します。</param>
+	void SetDimension(unsigned int newRow, unsigned int newColumn)
+	{
+		row = newRow;
+		column = newColumn;
+	}
+
 	/// <summary>総パターン数を取得します。</summary>
 	size_t Count() const { return labels.size(); }
 
@@ -109,7 +118,7 @@ private:
 };
 
 /// <summary>学習データおよび識別データを格納するセットを表します。</summary>
-class LearningSet
+class LearningSet final
 {
 public:
 	/// <summary><see cref="LearningSet"/> クラスの新しいインスタンスを初期化します。</summary>
@@ -174,26 +183,38 @@ private:
 	DataSet testData;
 };
 
+template <class T> inline T* pointer_cast(void* pointer) { return static_cast<T*>(pointer); }
+
 /// <summary>学習セットのローダーを表します。</summary>
 class LearningSetLoader
 {
 public:
-	/// <summary>MNIST をロードします。</summary>
-	/// <param name="directoryName">MNIST データが存在するディレクトリの場所を指定します。</param>
-	static LearningSet LoadMnistSet(const std::string& directoryName)
+	virtual ~LearningSetLoader() { }
+
+	/// <summary>学習セットをロードします。</summary>
+	/// <param name="directoryName">データが存在するディレクトリの場所を指定します。</param>
+	LearningSet Load(const std::string& path)
 	{
 		LearningSet set;
-		LoadMnistDataSet(set.TrainingData(), directoryName + "/train");
-		LoadMnistDataSet(set.TestData(), directoryName + "/t10k");
+		LoadDataSet(set.TrainingData(), GetTrainingPath(path));
+		LoadDataSet(set.TestData(), GetTestPath(path));
 		set.ClassCount = 10;
 		return set;
 	}
 
-private:
-	static void LoadMnistDataSet(DataSet& dataset, const std::string& fileName)
+protected:
+	virtual void LoadDataSet(DataSet& dataset, const std::string& path) = 0;
+	virtual std::string GetTrainingPath(const std::string& path) = 0;
+	virtual std::string GetTestPath(const std::string& path) = 0;
+};
+
+class MnistLoader final : public LearningSetLoader
+{
+protected:
+	virtual void LoadDataSet(DataSet& dataset, const std::string& path)
 	{
-		std::ifstream labelFile(fileName + "-labels.idx1-ubyte", std::ios::binary | std::ios::in);
-		std::ifstream imageFile(fileName + "-images.idx3-ubyte", std::ios::binary | std::ios::in);
+		std::ifstream labelFile(path + "-labels.idx1-ubyte", std::ios::binary | std::ios::in);
+		std::ifstream imageFile(path + "-images.idx3-ubyte", std::ios::binary | std::ios::in);
 		if (ReadInt32BigEndian(labelFile) != 0x801)
 			return;
 		if (ReadInt32BigEndian(imageFile) != 0x803)
@@ -213,7 +234,12 @@ private:
 		}
 	}
 
-	static uint32_t ReadInt32BigEndian(std::ifstream& stream)
+	virtual std::string GetTrainingPath(const std::string& path) { return path + "/train"; }
+
+	virtual std::string GetTestPath(const std::string& path) { return path + "/t10k"; }
+
+private:
+	uint32_t ReadInt32BigEndian(std::ifstream& stream)
 	{
 		uint32_t temp;
 		stream.read(pointer_cast<char>(&temp), sizeof(temp));
@@ -224,12 +250,40 @@ private:
 			(temp & 0xFF000000) >> 24;
 	}
 
-	static uint8_t ReadByte(std::ifstream& stream)
+	uint8_t ReadByte(std::ifstream& stream)
 	{
 		uint8_t temp;
 		stream.read(pointer_cast<char>(&temp), sizeof(temp));
 		return temp;
 	}
+};
 
-	template <class T> static T* pointer_cast(void* pointer) { return static_cast<T*>(pointer); }
+class PatternRecognitionLoader final : public LearningSetLoader
+{
+protected:
+	virtual void LoadDataSet(DataSet& dataset, const std::string& path)
+	{
+		dataset.SetDimension(7, 5);
+		std::ifstream file(path, std::ios::in);
+		std::string line;
+		while (std::getline(file, line))
+		{
+			std::istringstream ss(line);
+			std::string item;
+			if (!std::getline(ss, item, ','))
+				continue;
+			dataset.Labels().push_back(static_cast<unsigned int>(std::stoul(item)));
+			VectorType image(7 * 5);
+			size_t i = 0;
+			while (std::getline(ss, item, ','))
+				image[i++] = std::stod(item);
+			dataset.Images().push_back(image);
+		}
+		dataset.Images().shrink_to_fit();
+		dataset.Labels().shrink_to_fit();
+	}
+
+	virtual std::string GetTrainingPath(const std::string& path) { return path + "/pattern2learn.dat"; }
+
+	virtual std::string GetTestPath(const std::string& path) { return path + "/pattern2recog.dat"; }
 };

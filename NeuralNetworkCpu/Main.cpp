@@ -5,7 +5,7 @@ void TestSdA(const LearningSet& datasets);
 
 int main()
 {
-	TestSdA(LearningSet(LearningSetLoader::LoadMnistSet("MNIST"), 5000, 1000));
+	TestSdA(LearningSet(MnistLoader().Load("MNIST"), 5000, 1000));
 	return 0;
 }
 
@@ -19,22 +19,26 @@ const struct
 	Floating Noise;
 } PreTrainingConfigurations[]
 {
-	{ 500, 500, 100, static_cast<Floating>(0) }, // Noise: 0.1
-	{ 100, 5000, 100, static_cast<Floating>(0) }, // Noise: 0.2
-	{ 100, 100, 100, static_cast<Floating>(0.3) }, // Noise: 0.3
+	{ 1, 5000, 8, static_cast<Floating>(0.1) }, // Noise: 0.1
+	{ 1, 5000, 8, static_cast<Floating>(0.2) }, // Noise: 0.2
+	{ 1, 5000, 8, static_cast<Floating>(0.3) }, // Noise: 0.3
 };
 
-const int FineTuningEpochs = 30;
+const unsigned int FineTuningEpochs = 1000;
 const ValueType FineTuningLearningRate = static_cast<ValueType>(0.01);
+const unsigned int DefaultPatience = 10;
+const double ImprovementThreshold = 0.995;
+const unsigned int PatienceIncrease = 2;
 
 // ニューロン数自動化 メモ
 // できるだけ計算をさせないことが重要
 // 最終エポックでのテストコスト予測はもちろん、ニューロン数ごとの最終テストコストも予測することで
 // チェックすべきニューロン数の組み合わせを減少させる。
 
-struct LossPredictor
+template <class T, size_t N> class LossPredictor final
 {
-	LossPredictor() : a(0), b(0), c(0) { }
+public:
+	LossPredictor() : a(), b(), c() { }
 	LossPredictor(const LossPredictor& src) : a(src.a), b(src.b), c(src.c) { }
 	LossPredictor& operator=(const LossPredictor& src)
 	{
@@ -43,114 +47,162 @@ struct LossPredictor
 		c = src.c;
 		return *this;
 	}
-	double operator()(unsigned int n) { return a * pow(n, b) + c; }
+	void PushLoss(const T& loss) { losses.Push(loss); }
+	void PushLoss(T&& loss) { losses.Push(std::move(loss)); }
+	void Setup(unsigned int currentEpoch)
+	{
+		T sources[N];
+		for (size_t i = 0; i < N; i++)
+			sources[i] = currentEpoch - N + i + 1;
+		Setup(sources, losses);
+	}
+	double operator()(unsigned int epoch) const { return a * pow(epoch, b) + c; }
+	std::string GetExpression() const
+	{
+		std::stringstream ss;
+		ss << boost::format("%lf * x ** %lf + %lf") % a % b % c;
+		return std::move(ss.str());
+	}
+
+private:
+	T a, b, c;
+	ShiftRegister<T, N> losses;
+
 	template <class Vector1, class Vector2> void Setup(const Vector1& sources, const Vector2& targets)
 	{
 		auto constant = (targets[2] - targets[1]) / (targets[1] - targets[0]);
-		auto f = [&](double b) { return (pow(sources[2], b) - pow(sources[1], b)) / (pow(sources[1], b) - pow(sources[0], b)) - constant; };
-		auto df = [&](double b)
+		auto f = [&](const T& b) { return (pow(sources[2], b) - pow(sources[1], b)) / (pow(sources[1], b) - pow(sources[0], b)) - constant; };
+		auto df = [&](const T& b)
 		{
-			double denomi = pow(sources[1], b) - pow(sources[0], b);
-			double sum = 0;
+			T denomi = pow(sources[1], b) - pow(sources[0], b);
+			T sum = 0;
 			for (unsigned int i = 0; i < 3; i++)
 			{
-				double x_i1 = sources[(i + 1) % 3];
+				const T& x_i1 = sources[(i + 1) % 3];
 				sum += pow(sources[i], b) * pow(x_i1, b) * log(x_i1 / sources[i]);
 			}
 			return sum / denomi / denomi;
 		};
-		auto d2f = [&](double b)
+		auto d2f = [&](const T& b)
 		{
-			double denomi = pow(sources[1], b) - pow(sources[0], b);
-			double res = 2 * (pow(sources[1], b) * log(sources[1]) - pow(sources[0], b) * log(sources[0]));
-			double sum = 0;
+			T denomi = pow(sources[1], b) - pow(sources[0], b);
+			T res = 2 * (pow(sources[1], b) * log(sources[1]) - pow(sources[0], b) * log(sources[0]));
+			T sum = 0;
 			for (unsigned int i = 0; i < 3; i++)
 			{
-				double x_i1 = sources[(i + 1) % 3];
+				const T& x_i1 = sources[(i + 1) % 3];
 				sum += (res - denomi * log(sources[i] * x_i1)) * pow(sources[i], b) * pow(x_i1, b) * log(x_i1 / sources[i]);
 			}
 			return sum / denomi / denomi / denomi;
 		};
-		double b_hat = -1, delta;
-		do
+		T b_hat = -1;
+		while (true)
 		{
 			auto y = f(b_hat);
 			auto dy = df(b_hat);
-			delta = 2 * dy * y / (2 * dy * dy - y * d2f(b_hat));
+			auto delta = 2 * dy * y / (2 * dy * dy - y * d2f(b_hat));
 			b_hat -= delta;
-		} while (abs(delta) > 1e-10);
+			if (abs(delta) <= 1e-10)
+				break;
+		}
 		a = (targets[1] - targets[0]) / (pow(sources[1], b_hat) - pow(sources[0], b_hat));
 		b = b_hat;
 		c = targets[0] - a * pow(sources[0], b_hat);
 	}
-
-private:
-	double a, b, c;
 };
 
-bool TrainLayer(std::ofstream& output, StackedDenoisingAutoEncoder& sda, unsigned int i, unsigned int neurons, const LearningSet& datasets, ShiftRegister<ValueType, 3>* testCosts, LossPredictor* predictor)
+const double PredictionEpsilon = 0.01;
+
+inline bool IsConverged(double lastTestCost, double testCost)
 {
+	return abs(testCost - lastTestCost) / testCost <= PredictionEpsilon;
+}
+
+bool TrainLayer(std::ofstream& output, StackedDenoisingAutoEncoder& sda, unsigned int i, unsigned int neurons, const LearningSet& datasets, double& lastNeuronCost)
+{
+	//LossPredictor<double, 3> predictor;
 	sda.HiddenLayers.Set(i, neurons);
-	std::cout << "\"" << "Number of neurons of pre-training layer " << i << " is " << neurons << "\"" << std::endl;
+	std::cout << boost::format("Number of neurons of pre-training layer %d is %d") % i % neurons << std::endl;
 	for (unsigned int epoch = 1; epoch <= PreTrainingEpochs; epoch++)
 	{
-		ValueType trainCost = sda.HiddenLayers[i].Train(datasets.TrainingData(), PreTrainingLearningRate, PreTrainingConfigurations[i].Noise);
-		ValueType testCost = sda.HiddenLayers[i].ComputeCost(datasets.TestData(), PreTrainingConfigurations[i].Noise);
-		if (testCosts)
-			testCosts->Push(testCost);
-		if (predictor && epoch >= 4)
+		sda.HiddenLayers[i].Train(datasets.TrainingData(), PreTrainingLearningRate, PreTrainingConfigurations[i].Noise);
+		auto testCost = sda.HiddenLayers[i].ComputeCost(datasets.TestData(), PreTrainingConfigurations[i].Noise);
+		//predictor.PushLoss(testCost);
+		//if (epoch >= 4)
+		//{
+		//	if (epoch == 4)
+		//	{
+		//		predictor.Setup(epoch);
+		//		std::cout << "Prediction Expression: " << predictor.GetExpression() << std::endl;
+		//	}
+		//	auto predictedTestCost = predictor(epoch);
+		//	std::cout << boost::format("%2d %10lf %10lf") % epoch % testCost % predictedTestCost << std::endl;
+		//	output << boost::format("PT %d %d %lf %lf") % neurons % epoch % testCost % predictedTestCost << std::endl;
+		//	//if (epoch == 4 && !IsConverged(lastNeuronCost, predictor(PreTrainingEpochs), output))
+		//	//{
+		//	//	lastNeuronCost = predictor(PreTrainingEpochs);
+		//	//	return false;
+		//	//}
+		//}
+		//else
 		{
-			if (epoch == 4)
-			{
-				double sources[] { epoch - 2, epoch - 1, epoch };
-				predictor->Setup(sources, *testCosts);
-			}
-			double predictedTestCost = (*predictor)(epoch);
-			std::cout << epoch << " " << trainCost << " " << testCost << " " << predictedTestCost << std::endl;
-			output << neurons << " " << epoch << " " << trainCost << " " << testCost << " " << predictedTestCost << std::endl;
-			//if (predictor(PreTrainingEpochs) > lastLayerTestCost)
-			//	goto increaseNeuron;
-		}
-		else
-		{
-			std::cout << epoch << " " << trainCost << " " << testCost << " none" << std::endl;
-			output << neurons << " " << epoch << " " << trainCost << " " << testCost << std::endl;
+			std::cout << boost::format("%2d %lf") % epoch % testCost << std::endl;
+			output << boost::format("PT %d %d %lf") % neurons % epoch % testCost << std::endl;
 		}
 	}
-	return true;
+	//bool result = IsConverged(lastNeuronCost, testCosts[-1], output);
+	//lastNeuronCost = testCosts[-1];
+	//return result;
+	return false;
 }
 
 void TestSdA(const LearningSet& datasets)
 {
 	// seed: 89677
 	std::random_device random;
-	StackedDenoisingAutoEncoder sda(random(), datasets.TrainingData().Row() * datasets.TrainingData().Column());
-	ValueType lastLayerTestCost = 0;
-	LossPredictor predictor;
+	
 	std::ofstream output("output.log");
+	double lastNeuronCost = std::numeric_limits<double>::infinity();
 
-	TrainLayer(output, sda, 0, PreTrainingConfigurations[0].MinNeurons, datasets, nullptr, nullptr);
+	//for (unsigned int i = 0; i < sizeof(PreTrainingConfigurations) / sizeof(PreTrainingConfigurations[0]); i++)
+	//{
+	//	for (unsigned int neurons = PreTrainingConfigurations[i].MinNeurons; neurons <= PreTrainingConfigurations[i].MaxNeurons; neurons += PreTrainingConfigurations[i].NeuronIncrement)
+	//	{
+	//		if (TrainLayer(output, sda, i, neurons, datasets, lastNeuronCost))
+	//			break;
+	//	}
+	//	return;
+	//}
 
-	for (unsigned int i = 1; i < sizeof(PreTrainingConfigurations) / sizeof(PreTrainingConfigurations[0]); i++)
+	for (unsigned int n0 = PreTrainingConfigurations[0].MinNeurons; n0 <= PreTrainingConfigurations[0].MaxNeurons; n0 *= PreTrainingConfigurations[0].NeuronIncrement)
 	{
-		ShiftRegister<ValueType, 3> testCosts;
-		for (unsigned int neurons = PreTrainingConfigurations[i].MinNeurons; neurons <= PreTrainingConfigurations[i].MaxNeurons; neurons += PreTrainingConfigurations[i].NeuronIncrement)
+		for (unsigned int n1 = PreTrainingConfigurations[1].MinNeurons; n1 <= PreTrainingConfigurations[1].MaxNeurons; n1 *= PreTrainingConfigurations[1].NeuronIncrement)
 		{
-			if (TrainLayer(output, sda, i, neurons, datasets, &testCosts, &predictor))
-				continue;
-			if (testCosts[-1] <= lastLayerTestCost)
-				break;
-		}
-		return;
-		lastLayerTestCost = testCosts[-1];
-	}
+			for (unsigned int n2 = PreTrainingConfigurations[2].MinNeurons; n2 <= PreTrainingConfigurations[2].MaxNeurons; n2 *= PreTrainingConfigurations[2].NeuronIncrement)
+			{
+				StackedDenoisingAutoEncoder sda(random(), datasets.TrainingData().Row() * datasets.TrainingData().Column());
+				TrainLayer(output, sda, 0, n0, datasets, lastNeuronCost);
+				TrainLayer(output, sda, 1, n1, datasets, lastNeuronCost);
+				TrainLayer(output, sda, 2, n2, datasets, lastNeuronCost);
 
-	sda.SetLogisticRegressionLayer(datasets.ClassCount);
-	std::cout << "\"" << "Fine-Tuning..." << "\"" << std::endl;
-	for (unsigned int epoch = 1; epoch <= FineTuningEpochs; epoch++)
-	{
-		sda.FineTune(datasets.TrainingData(), FineTuningLearningRate);
-		Floating thisTestLoss = sda.ComputeErrorRates(datasets.TestData());
-		std::cout << epoch << " " << thisTestLoss * 100.0 << "%" << std::endl;
+				double bestTestScore = std::numeric_limits<double>::infinity();
+				sda.SetLogisticRegressionLayer(datasets.ClassCount);
+				std::cout << "Fine-Tuning..." << std::endl;
+				for (unsigned int epoch = 1, patience = DefaultPatience; epoch <= FineTuningEpochs && epoch <= patience; epoch++)
+				{
+					sda.FineTune(datasets.TrainingData(), FineTuningLearningRate);
+					auto thisTestScore = sda.ComputeErrorRates(datasets.TestData());
+					std::cout << boost::format("%4d %lf%%") % epoch % (thisTestScore * 100.0) << std::endl;
+					output << boost::format("FT %d %lf") % epoch % thisTestScore << std::endl;
+
+					if (thisTestScore < bestTestScore)
+					{
+						if (thisTestScore < bestTestScore * ImprovementThreshold)
+							patience = std::max(patience, epoch * PatienceIncrease);
+						bestTestScore = thisTestScore;
+					}
+				}
+			}
+		}
 	}
 }

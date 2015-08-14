@@ -1,8 +1,10 @@
 #pragma once
 
-template <class T, size_t N> class ShiftRegister
+template <class T, size_t N> class ShiftRegister final
 {
 public:
+	const size_t Capacity = N;
+
 	void Push(const T& item)
 	{
 		data[(baseIndex + count++) % N] = item;

@@ -10,7 +10,7 @@
 /// 最初の層の雑音除去自己符号化器は入力として積層雑音除去自己符号化器の入力を受け取り、最後の層の雑音除去自己符号化器の隠れ層は出力を表します。
 /// 注釈: 事前学習後、積層雑音除去自己符号化器は通常の多層パーセプトロンとして扱われます。雑音除去自己符号化器は重みの初期化にのみ使用されます。
 /// </summary>
-class StackedDenoisingAutoEncoder : private boost::noncopyable
+class StackedDenoisingAutoEncoder final : private boost::noncopyable
 {
 public:
 	/// <summary><see cref="StackedDenoisingAutoEncoder"/> クラスを乱数生成器のシード値と入力次元数を使用して初期化します。</summary>
@@ -25,7 +25,7 @@ public:
 	/// <param name="neurons">SDA の出力層のニューロン数を指定します。</param>
 	void SetLogisticRegressionLayer(unsigned int neurons)
 	{
-		outputLayer = std::unique_ptr<LogisticRegressionLayer>(new LogisticRegressionLayer(HiddenLayers[HiddenLayers.Count() - 1].nOut, neurons));
+		outputLayer = std::unique_ptr<LogisticRegressionLayer>(new LogisticRegressionLayer(HiddenLayers[HiddenLayers.Count() - 1].Weight.Row(), neurons));
 		HiddenLayers.Freeze();
 	}
 
@@ -34,17 +34,25 @@ public:
 	/// <param name="learningRate">ファインチューニング段階で使用される学習率を指定します。</param>
 	void FineTune(const DataSet& dataset, ValueType learningRate)
 	{
+		struct equal
+		{
+			equal(size_t constant) : constant(constant) { }
+			ValueType operator[](size_t index) const { return index == constant ? static_cast<ValueType>(1.0) : static_cast<ValueType>(0.0); }
+		private:
+			size_t constant;
+		};
+
 		auto inputs = std::vector<ReferableVector>(HiddenLayers.Count() + 2);
 		for (unsigned int d = 0; d < dataset.Count(); d++)
 		{
 			inputs[0] = dataset.Images()[d];
-			unsigned int n = 0;
+			size_t n = 0;
 			for (; n < HiddenLayers.Count(); n++)
 				inputs[n + 1] = HiddenLayers[n].Compute(inputs[n]);
 			inputs[n + 1] = outputLayer->Compute(inputs[n]);
-			VectorType lowerInfo(outputLayer->Learn(inputs[n], inputs[n + 1], [&](unsigned int i) { return i == dataset.Labels()[d] ? static_cast<ValueType>(1.0) : static_cast<ValueType>(0.0); }, learningRate));
+			VectorType lowerInfo(LearnLayer(*outputLayer, inputs[n], inputs[n + 1], equal(dataset.Labels()[d]), learningRate));
 			while (--n <= HiddenLayers.Count())
-				lowerInfo = HiddenLayers[n].Learn(inputs[n], inputs[n + 1], [&](unsigned int i) { return lowerInfo[i]; }, learningRate);
+				lowerInfo = LearnLayer(HiddenLayers[n], inputs[n], inputs[n + 1], lowerInfo, learningRate);
 		}
 	}
 
@@ -53,8 +61,8 @@ public:
 	/// <returns>データセット全体に対して計算された誤り率。</returns>
 	Floating ComputeErrorRates(const DataSet& dataset)
 	{
-		int sum = 0;
-		for (unsigned int i = 0; i < dataset.Count(); i++)
+		unsigned int sum = 0;
+		for (size_t i = 0; i < dataset.Count(); i++)
 		{
 			if (outputLayer->Predict(HiddenLayers.Compute(dataset.Images()[i], nullptr)) != dataset.Labels()[i])
 				sum++;

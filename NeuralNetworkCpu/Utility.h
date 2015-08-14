@@ -1,10 +1,13 @@
 ﻿#pragma once
 
-typedef float Floating;
+#include "Matrix.h"
+
+typedef double Floating;
 typedef Floating ValueType;
 typedef std::valarray<ValueType> VectorType;
+typedef Matrix<ValueType> MatrixType;
 
-class ReferableVector
+class ReferableVector final
 {
 public:
 	ReferableVector() : reference_target(nullptr), target() { }
