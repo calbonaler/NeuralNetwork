@@ -256,7 +256,7 @@ private:
 template <class TValue> class PatternRecognitionLoader final : public LearningSetLoader<TValue>
 {
 protected:
-	virtual void LoadDataSet(DataSet& dataset, const std::string& path)
+	virtual void LoadDataSet(DataSet<TValue>& dataset, const std::string& path)
 	{
 		dataset.SetDimension(7, 5);
 		std::ifstream file(path, std::ios::in);
@@ -268,7 +268,7 @@ protected:
 			if (!std::getline(ss, item, ','))
 				continue;
 			dataset.Labels().push_back(static_cast<unsigned int>(std::stoul(item)));
-			std::valarray<ValueType> image(dataset.Row() * dataset.Column());
+			std::valarray<TValue> image(dataset.Row() * dataset.Column());
 			size_t i = 0;
 			while (std::getline(ss, item, ','))
 				image[i++] = std::stod(item);

@@ -3,6 +3,7 @@
 // Standard C++ Libraries
 
 #include <algorithm>
+#include <chrono>
 #include <functional>
 #include <fstream>
 #include <iostream>

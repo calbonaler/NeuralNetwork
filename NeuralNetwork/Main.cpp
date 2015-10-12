@@ -7,7 +7,9 @@ typedef double Floating;
 
 int main()
 {
-	TestSdA(LearningSet<Floating>(MnistLoader<Floating>().Load("MNIST"), 5000, 1000));
+	auto ls = MnistLoader<Floating>().Load("MNIST");
+	//auto ls = PatternRecognitionLoader<Floating>().Load("PR");
+	TestSdA(ls);
 	return 0;
 }
 
@@ -98,7 +100,7 @@ inline bool IsConverged(double lastTestCost, double testCost) { return abs(testC
 
 template <class TValue, class TNoise> bool PreTrain(std::ofstream& output, HiddenLayerCollection<TValue>& hiddenLayers, unsigned int i, unsigned int neurons, TNoise noise, const LearningSet<TValue>& datasets, double& lastNeuronCost)
 {
-	const int PreTrainingEpochs = 1000;
+	const int PreTrainingEpochs = 15;
 	const TValue PreTrainingLearningRate = static_cast<TValue>(0.001);
 
 	//LossPredictor<double, 3> predictor;
@@ -166,6 +168,10 @@ template <class TValue> void FineTune(std::ofstream& output, StackedDenoisingAut
 
 template <class TValue> void TestSdA(const LearningSet<TValue>& datasets)
 {
+	using namespace std::chrono;
+
+	auto start = system_clock::now();
+
 	const struct
 	{
 		unsigned int MinNeurons;
@@ -174,9 +180,9 @@ template <class TValue> void TestSdA(const LearningSet<TValue>& datasets)
 		Floating Noise;
 	} LayerConfigurations[]
 	{
-		{ 1, 5000, 8, static_cast<Floating>(0.0) }, // Noise: 0.1
-		{ 1, 5000, 8, static_cast<Floating>(0.0) }, // Noise: 0.2
-		{ 1, 5000, 8, static_cast<Floating>(0.0) }, // Noise: 0.3
+		{ 1, 5000, 8, static_cast<Floating>(0.1) }, // Noise: 0.1
+		{ 1, 5000, 8, static_cast<Floating>(0.2) }, // Noise: 0.2
+		{ 1, 5000, 8, static_cast<Floating>(0.3) }, // Noise: 0.3
 	};
 
 	// seed: 89677
@@ -199,5 +205,8 @@ template <class TValue> void TestSdA(const LearningSet<TValue>& datasets)
 	PreTrain(output, sda.HiddenLayers, 0, 512, LayerConfigurations[0].Noise, datasets, lastNeuronCost);
 	PreTrain(output, sda.HiddenLayers, 1, 512, LayerConfigurations[1].Noise, datasets, lastNeuronCost);
 	PreTrain(output, sda.HiddenLayers, 2, 512, LayerConfigurations[2].Noise, datasets, lastNeuronCost);
-	//FineTune(output, sda, datasets);
+	FineTune(output, sda, datasets);
+
+	auto end = system_clock::now();
+	std::cout << "Elapsed time (seconds): " << duration_cast<seconds>(end - start).count() << std::endl;
 }
