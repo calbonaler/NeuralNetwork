@@ -227,7 +227,7 @@ public:
 		auto validationPath = GetValidationPath(path);
 		if (!validationPath.empty())
 			LoadDataSet(set.ValidationData(), validationPath);
-		set.ClassCount = 10;
+		set.ClassCount = ClassCount();
 		return set;
 	}
 
@@ -236,6 +236,7 @@ protected:
 	virtual std::string GetTrainingPath(const std::string& path) = 0;
 	virtual std::string GetValidationPath(const std::string&) { return ""; }
 	virtual std::string GetTestPath(const std::string& path) = 0;
+	virtual unsigned int ClassCount() { return 10; }
 };
 
 template <class TValue> class MnistLoader final : public LearningSetLoader<TValue>
@@ -278,6 +279,51 @@ private:
 			(temp & 0x0000FF00) << 8 |
 			(temp & 0x00FF0000) >> 8 |
 			(temp & 0xFF000000) >> 24;
+	}
+
+	uint8_t ReadByte(std::ifstream& stream)
+	{
+		uint8_t temp;
+		stream.read(pointer_cast<char>(&temp), sizeof(temp));
+		return temp;
+	}
+};
+
+template <class TValue> class Caltech101SilhouettesLoader final : public LearningSetLoader<TValue>
+{
+protected:
+	virtual void LoadDataSet(DataSet<TValue>& dataset, const std::string& path)
+	{
+		std::ifstream labelFile(path + "_labels.bin", std::ios::binary | std::ios::in);
+		std::ifstream imageFile(path + "_images.bin", std::ios::binary | std::ios::in);
+		auto length = ReadInt32(labelFile);
+		if (length != ReadInt32(imageFile))
+			return;
+		auto imageLength = ReadInt32(imageFile);
+		auto oneSide = static_cast<unsigned int>(sqrt(imageLength));
+		dataset.Allocate(length, oneSide, oneSide);
+		for (uint32_t i = 0; i < length; i++)
+		{
+			dataset.Labels()[i] = ReadByte(labelFile);
+			for (uint32_t j = 0; j < imageLength; j++)
+				dataset.Images()[i][j] = static_cast<TValue>(ReadByte(imageFile)); // value is either 0 or 1
+		}
+	}
+
+	virtual std::string GetTrainingPath(const std::string& path) { return path + "/train"; }
+
+	virtual std::string GetValidationPath(const std::string& path) { return path + "/valid"; }
+
+	virtual std::string GetTestPath(const std::string& path) { return path + "/test"; }
+
+	virtual unsigned int ClassCount() { return 101; }
+
+private:
+	uint32_t ReadInt32(std::ifstream& stream)
+	{
+		uint32_t temp;
+		stream.read(pointer_cast<char>(&temp), sizeof(temp));
+		return temp;
 	}
 
 	uint8_t ReadByte(std::ifstream& stream)

@@ -7,13 +7,14 @@ typedef double Floating;
 
 int main()
 {
-	auto ls = MnistLoader<Floating>().Load("MNIST");
+	//auto ls = MnistLoader<Floating>().Load("MNIST");
 	//auto ls = PatternRecognitionLoader<Floating>().Load("PR");
-	LearningSet<Floating> newLs;
-	newLs.ClassCount = ls.ClassCount;
-	newLs.TrainingData().From(std::move(ls.TrainingData()), 0, 50000);
-	newLs.ValidationData().From(std::move(ls.TrainingData()), 50000, 10000);
-	newLs.TestData().From(std::move(ls.TestData()), 0, 10000);
+	auto newLs = Caltech101SilhouettesLoader<Floating>().Load("Caltech101Silhouettes");
+	//LearningSet<Floating> newLs;
+	//newLs.ClassCount = ls.ClassCount;
+	//newLs.TrainingData().From(std::move(ls.TrainingData()), 0, 50000);
+	//newLs.ValidationData().From(std::move(ls.TrainingData()), 50000, 10000);
+	//newLs.TestData().From(std::move(ls.TestData()), 0, 10000);
 	TestSdA(newLs);
 	return 0;
 }
