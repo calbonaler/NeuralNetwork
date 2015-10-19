@@ -9,7 +9,7 @@ public:
 
 	/// <summary>指定されたデータセットのデータをコピーして、<see cref="DataSet"/> クラスの新しいインスタンスを初期化します。</summary>
 	/// <param name="dataset">コピー元のデータセットを指定します。</param>
-	DataSet(const DataSet& dataset) : row(0), column(0) { CopyFrom(dataset, dataset.labels.size()); }
+	DataSet(const DataSet& dataset) : row(0), column(0) { From(dataset, dataset.labels.size()); }
 
 	/// <summary>指定されたデータセットのデータを移動して、<see cref="DataSet"/> クラスの新しいインスタンスを初期化します。</summary>
 	/// <param name="dataset">移動元のデータセットを指定します。</param>
@@ -17,8 +17,15 @@ public:
 
 	/// <summary>指定されたデータセットのデータの一部を使用して、<see cref="DataSet"/> クラスの新しいインスタンスを初期化します。</summary>
 	/// <param name="dataset">基になるデータセットを指定します。</param>
-	/// <param name="count"><paramref name="dataset"/> からこのデータセットにコピーされるデータ数を指定します。データは先頭からコピーされます。</param>
-	DataSet(const DataSet& dataset, size_t count) : row(0), column(0) { CopyFrom(dataset, count); }
+	/// <param name = "index"><paramref name="dataset"/> 内のコピーが開始される位置を指定します。</param>
+	/// <param name="count"><paramref name="dataset"/> からこのデータセットにコピーされるデータ数を指定します。</param>
+	DataSet(const DataSet& dataset, size_t index, size_t count) : row(0), column(0) { CopyFrom(dataset, index, count); }
+
+	/// <summary>指定されたデータセットのデータの一部を使用して、<see cref="DataSet"/> クラスの新しいインスタンスを初期化します。</summary>
+	/// <param name="dataset">基になるデータセットを指定します。</param>
+	/// <param name = "index"><paramref name="dataset"/> 内の移動が開始される位置を指定します。</param>
+	/// <param name="count"><paramref name="dataset"/> からこのデータセットに移動されるデータ数を指定します。</param>
+	DataSet(DataSet&& dataset, size_t index, size_t count) : row(0), column(0) { From(dataset, index, count); }
 
 	/// <summary>指定されたデータセットからこのデータセットにデータをコピーします。</summary>
 	/// <param name="dataset">データのコピー元のデータセットを指定します。</param>
@@ -49,16 +56,37 @@ public:
 
 	/// <summary>指定されたデータセットの一部をこのデータセットにコピーします。</summary>
 	/// <param name="dataset">基になるデータセットを指定します。</param>
-	/// <param name="count"><paramref name="dataset"/> からこのデータセットにコピーされるデータ数を指定します。データは先頭からコピーされます。</param>
-	void CopyFrom(const DataSet& dataset, size_t count)
+	/// <param name="index"><paramref name="dataset"/> 内のコピーが開始される位置を指定します。</param>
+	/// <param name="count"><paramref name="dataset"/> からこのデータセットにコピーされるデータ数を指定します。</param>
+	void From(const DataSet& dataset, size_t index, size_t count)
 	{
-		if (count <= 0 || count > dataset.labels.size())
-			throw std::invalid_argument("count must be inside of range (0, dataset.Count()]");
+		if (count < 0)
+			throw std::invalid_argument("count must not be negative.");
+		if (index < 0 || index > dataset.labels.size() - count)
+			throw std::invalid_argument("index must be in range [0, dataset.Labels().size() - count]");
 		Allocate(count, dataset.row, dataset.column);
 		for (unsigned int i = 0; i < count; i++)
 		{
-			labels[i] = dataset.labels[i];
-			images[i] = dataset.images[i];
+			labels[i] = dataset.labels[i + index];
+			images[i] = dataset.images[i + index];
+		}
+	}
+
+	/// <summary>指定されたデータセットの一部をこのデータセットに移動します。</summary>
+	/// <param name="dataset">基になるデータセットを指定します。</param>
+	/// <param name="index"><paramref name="dataset"/> 内の移動が開始される位置を指定します。</param>
+	/// <param name="count"><paramref name="dataset"/> からこのデータセットに移動されるデータ数を指定します。</param>
+	void From(DataSet&& dataset, size_t index, size_t count)
+	{
+		if (count < 0)
+			throw std::invalid_argument("count must not be negative.");
+		if (index < 0 || index > dataset.labels.size() - count)
+			throw std::invalid_argument("index must be in range [0, dataset.Labels().size() - count]");
+		Allocate(count, dataset.row, dataset.column);
+		for (unsigned int i = 0; i < count; i++)
+		{
+			labels[i] = std::move(dataset.labels[i + index]);
+			images[i] = std::move(dataset.images[i + index]);
 		}
 	}
 
@@ -127,18 +155,13 @@ public:
 	/// <param name="learningSet">移動元の <see cref="LearningSet"/> を指定します。</param>
 	LearningSet(LearningSet&& learningSet) { *this = std::move(learningSet); }
 
-	/// <summary>指定された <see cref="LearningSet"/> の一部を使用して、<see cref="LearningSet"/> クラスの新しいインスタンスを初期化します。</summary>
-	/// <param name="learningSet">基になる <see cref="LearningSet"/> を指定します。</param>
-	/// <param name="trainingDataCount"><paramref name="learningSet"/> からこの <see cref="LearningSet"/> にコピーされる学習データ数を指定します。</param>
-	/// <param name="testDataCount"><paramref name="learningSet"/> からこの <see cref="LearningSet"/> にコピーされるテストデータ数を指定します。</param>
-	LearningSet(const LearningSet& learningSet, unsigned int trainingDataCount, unsigned int testDataCount) : trainingData(learningSet.trainingData, trainingDataCount), testData(learningSet.testData, testDataCount) { ClassCount = learningSet.ClassCount; }
-
 	/// <summary>指定された <see cref="LearningSet"/> のデータをこの <see cref="LearningSet"/> にコピーします。</summary>
 	/// <param name="learningSet">データのコピー元の <see cref="LearningSet"/> を指定します。</param>
 	/// <returns>この <see cref="LearningSet"/> への参照。</returns>
 	LearningSet& operator=(const LearningSet& learningSet)
 	{
 		trainingData = learningSet.trainingData;
+		validationData = learningSet.validationData;
 		testData = learningSet.testData;
 		ClassCount = learningSet.ClassCount;
 		return *this;
@@ -152,6 +175,7 @@ public:
 		if (this != &learningSet)
 		{
 			trainingData = std::move(learningSet.trainingData);
+			validationData = std::move(learningSet.validationData);
 			testData = std::move(learningSet.testData);
 			ClassCount = learningSet.ClassCount;
 		}
@@ -164,6 +188,12 @@ public:
 	/// <summary>学習データを取得します。</summary>
 	const DataSet<TValue>& TrainingData() const { return trainingData; }
 
+	/// <summary>検証データを取得します。</summary>
+	DataSet<TValue>& ValidationData() { return validationData; }
+	
+	/// <summary>検証データを取得します。</summary>
+	const DataSet<TValue>& ValidationData() const { return validationData; }
+
 	/// <summary>テストデータを取得します。</summary>
 	DataSet<TValue>& TestData() { return testData; }
 
@@ -175,6 +205,7 @@ public:
 
 private:
 	DataSet<TValue> trainingData;
+	DataSet<TValue> validationData;
 	DataSet<TValue> testData;
 };
 
@@ -193,6 +224,9 @@ public:
 		LearningSet<TValue> set;
 		LoadDataSet(set.TrainingData(), GetTrainingPath(path));
 		LoadDataSet(set.TestData(), GetTestPath(path));
+		auto validationPath = GetValidationPath(path);
+		if (!validationPath.empty())
+			LoadDataSet(set.ValidationData(), validationPath);
 		set.ClassCount = 10;
 		return set;
 	}
@@ -200,6 +234,7 @@ public:
 protected:
 	virtual void LoadDataSet(DataSet<TValue>& dataset, const std::string& path) = 0;
 	virtual std::string GetTrainingPath(const std::string& path) = 0;
+	virtual std::string GetValidationPath(const std::string&) { return ""; }
 	virtual std::string GetTestPath(const std::string& path) = 0;
 };
 

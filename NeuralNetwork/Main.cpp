@@ -9,7 +9,12 @@ int main()
 {
 	auto ls = MnistLoader<Floating>().Load("MNIST");
 	//auto ls = PatternRecognitionLoader<Floating>().Load("PR");
-	TestSdA(ls);
+	LearningSet<Floating> newLs;
+	newLs.ClassCount = ls.ClassCount;
+	newLs.TrainingData().From(std::move(ls.TrainingData()), 0, 50000);
+	newLs.ValidationData().From(std::move(ls.TrainingData()), 50000, 10000);
+	newLs.TestData().From(std::move(ls.TestData()), 0, 10000);
+	TestSdA(newLs);
 	return 0;
 }
 
@@ -94,22 +99,21 @@ private:
 	}
 };
 
-const double PredictionEpsilon = 0.01;
+const double ConvergeConstant = 0.5;
 
-inline bool IsConverged(double lastTestCost, double testCost) { return abs(testCost - lastTestCost) / testCost <= PredictionEpsilon; }
-
-template <class TValue, class TNoise> bool PreTrain(std::ofstream& output, HiddenLayerCollection<TValue>& hiddenLayers, unsigned int i, unsigned int neurons, TNoise noise, const LearningSet<TValue>& datasets, double& lastNeuronCost)
+template <class TValue, class TNoise> bool PreTrain(std::ofstream& output, HiddenLayerCollection<TValue>& hiddenLayers, unsigned int i, unsigned int neurons, TNoise noise, const LearningSet<TValue>& datasets, double& lastNeuronCost, unsigned int lastNeurons)
 {
 	const int PreTrainingEpochs = 15;
 	const TValue PreTrainingLearningRate = static_cast<TValue>(0.001);
 
 	//LossPredictor<double, 3> predictor;
+	double currentTestCost;
 	hiddenLayers.Set(i, neurons);
 	std::cout << boost::format("Number of neurons of pre-training layer %d is %d") % i % neurons << std::endl;
 	for (unsigned int epoch = 1; epoch <= PreTrainingEpochs; epoch++)
 	{
 		hiddenLayers[i].Train(datasets.TrainingData(), PreTrainingLearningRate, noise);
-		auto testCost = hiddenLayers[i].ComputeCost(datasets.TestData(), noise);
+		currentTestCost = hiddenLayers[i].ComputeCost(datasets.ValidationData(), noise);
 		//predictor.PushLoss(testCost);
 		//if (epoch >= 4)
 		//{
@@ -129,14 +133,14 @@ template <class TValue, class TNoise> bool PreTrain(std::ofstream& output, Hidde
 		//}
 		//else
 		{
-			std::cout << boost::format("%2d %lf") % epoch % testCost << std::endl;
-			output << boost::format("PT %d %d %d %lf") % i % neurons % epoch % testCost << std::endl;
+			std::cout << boost::format("%2d %lf") % epoch % currentTestCost << std::endl;
+			output << boost::format("PT %d %d %d %lf") % i % neurons % epoch % currentTestCost << std::endl;
 		}
 	}
-	//bool result = IsConverged(lastNeuronCost, testCosts[-1], output);
-	//lastNeuronCost = testCosts[-1];
-	//return result;
-	return false;
+	auto costRelativeError = abs((currentTestCost - lastNeuronCost) / (neurons - lastNeurons));
+	std::cout << "Cost relative error: " << costRelativeError << std::endl;
+	lastNeuronCost = currentTestCost;
+	return costRelativeError <= ConvergeConstant;
 }
 
 template <class TValue> void FineTune(std::ofstream& output, StackedDenoisingAutoEncoder<TValue>& sda, const LearningSet<TValue>& datasets)
@@ -178,33 +182,31 @@ template <class TValue> void TestSdA(const LearningSet<TValue>& datasets)
 		unsigned int MaxNeurons;
 		unsigned int NeuronIncrement;
 		Floating Noise;
-	} LayerConfigurations[]
+	} LayerConfiguration[]
 	{
-		{ 1, 5000, 8, static_cast<Floating>(0.1) }, // Noise: 0.1
-		{ 1, 5000, 8, static_cast<Floating>(0.2) }, // Noise: 0.2
-		{ 1, 5000, 8, static_cast<Floating>(0.3) }, // Noise: 0.3
+		{ 1, 5000, 2, static_cast<Floating>(0.1) }, // Noise: 0.1
+		{ 1, 5000, 2, static_cast<Floating>(0.2) }, // Noise: 0.2
+		{ 1, 5000, 2, static_cast<Floating>(0.3) }, // Noise: 0.3
 	};
 
 	// seed: 89677
 	std::random_device random;
+	StackedDenoisingAutoEncoder<TValue> sda(random(), datasets.TrainingData().Row() * datasets.TrainingData().Column());
 	
 	std::ofstream output("output.log");
-	double lastNeuronCost = std::numeric_limits<double>::infinity();
+	double lastNeuronCost;
 
-	//for (unsigned int i = 0; i < sizeof(LayerConfiguration) / sizeof(LayerConfiguration[0]); i++)
-	//{
-	//	for (unsigned int neurons = LayerConfiguration[i].MinNeurons; neurons <= LayerConfiguration[i].MaxNeurons; neurons += LayerConfiguration[i].NeuronIncrement)
-	//	{
-	//		if (PreTrain(output, sda.HiddenLayers, i, neurons, LayerConfiguration[i].Noise, datasets, lastNeuronCost))
-	//			break;
-	//	}
-	//	return;
-	//}
+	for (unsigned int i = 0; i < sizeof(LayerConfiguration) / sizeof(LayerConfiguration[0]); i++)
+	{
+		lastNeuronCost = std::numeric_limits<double>::infinity();
+		for (unsigned int neurons = LayerConfiguration[i].MinNeurons; neurons <= LayerConfiguration[i].MaxNeurons; neurons *= LayerConfiguration[i].NeuronIncrement)
+		{
+			std::cout << "Last neuron cost: " << lastNeuronCost << std::endl;
+			if (PreTrain(output, sda.HiddenLayers, i, neurons, LayerConfiguration[i].Noise, datasets, lastNeuronCost, neurons / LayerConfiguration[i].NeuronIncrement))
+				break;
+		}
+	}
 
-	StackedDenoisingAutoEncoder<TValue> sda(random(), datasets.TrainingData().Row() * datasets.TrainingData().Column());
-	PreTrain(output, sda.HiddenLayers, 0, 512, LayerConfigurations[0].Noise, datasets, lastNeuronCost);
-	PreTrain(output, sda.HiddenLayers, 1, 512, LayerConfigurations[1].Noise, datasets, lastNeuronCost);
-	PreTrain(output, sda.HiddenLayers, 2, 512, LayerConfigurations[2].Noise, datasets, lastNeuronCost);
 	FineTune(output, sda, datasets);
 
 	auto end = system_clock::now();
