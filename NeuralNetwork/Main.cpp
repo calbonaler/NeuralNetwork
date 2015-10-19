@@ -149,7 +149,7 @@ template <class TValue> void FineTune(std::ofstream& output, StackedDenoisingAut
 	const unsigned int FineTuningEpochs = 1000;
 	const TValue FineTuningLearningRate = static_cast<TValue>(0.01);
 	const unsigned int DefaultPatience = 10;
-	const double ImprovementThreshold = 0.995;
+	const double ImprovementThreshold = 1;//0.995;
 	const unsigned int PatienceIncrease = 2;
 
 	double bestTestScore = std::numeric_limits<double>::infinity();
@@ -197,16 +197,16 @@ template <class TValue> void TestSdA(const LearningSet<TValue>& datasets)
 	std::ofstream output("output.log");
 	double lastNeuronCost;
 
-	for (unsigned int i = 0; i < sizeof(LayerConfiguration) / sizeof(LayerConfiguration[0]); i++)
-	{
-		lastNeuronCost = std::numeric_limits<double>::infinity();
-		for (unsigned int neurons = LayerConfiguration[i].MinNeurons; neurons <= LayerConfiguration[i].MaxNeurons; neurons *= LayerConfiguration[i].NeuronIncrement)
-		{
-			std::cout << "Last neuron cost: " << lastNeuronCost << std::endl;
-			if (PreTrain(output, sda.HiddenLayers, i, neurons, LayerConfiguration[i].Noise, datasets, lastNeuronCost, neurons / LayerConfiguration[i].NeuronIncrement))
-				break;
-		}
-	}
+	//for (unsigned int i = 0; i < sizeof(LayerConfiguration) / sizeof(LayerConfiguration[0]); i++)
+	//{
+	//	lastNeuronCost = std::numeric_limits<double>::infinity();
+	//	for (unsigned int neurons = LayerConfiguration[i].MinNeurons; neurons <= LayerConfiguration[i].MaxNeurons; neurons *= LayerConfiguration[i].NeuronIncrement)
+	//	{
+	//		std::cout << "Last neuron cost: " << lastNeuronCost << std::endl;
+	//		if (PreTrain(output, sda.HiddenLayers, i, neurons, LayerConfiguration[i].Noise, datasets, lastNeuronCost, neurons / LayerConfiguration[i].NeuronIncrement))
+	//			break;
+	//	}
+	//}
 
 	FineTune(output, sda, datasets);
 

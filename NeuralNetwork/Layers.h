@@ -244,6 +244,11 @@ public:
 		return std::move(result);
 	}
 
+	/// <summary>指定されたインデックスに追加される層の入力ニューロン数を計算します。</summary>
+	/// <param name="index">入力ニューロン数を計算する層のインデックスを指定します。</param>
+	/// <returns>追加される層の入力ニューロン数。</returns>
+	size_t InputNeuronCount(size_t index) const { return index <= 0 ? nIn : items[index - 1]->Weight.Row(); }
+
 	/// <summary>指定されたインデックスの隠れ層のニューロン数を変更します。このメソッドは隠れ層を追加することもできます。</summary>
 	/// <param name="index">ニューロン数を変更する隠れ層のインデックスを指定します。</param>
 	/// <param name="neurons">指定された隠れ層の新しいニューロン数を指定します。</param>
@@ -253,10 +258,9 @@ public:
 			throw std::domain_error("freezed collection cannot be changed");
 		if (index > items.size())
 			throw std::out_of_range("index less than or equal to Count()");
-		auto beforeNeurons = index <= 0 ? nIn : items[index - 1]->Weight.Row();
 		if (index == items.size())
 			items.push_back(std::unique_ptr<HiddenLayer<TValue>>());
-		items[index] = std::unique_ptr<HiddenLayer<TValue>>(new HiddenLayer<TValue>(beforeNeurons, neurons, this));
+		items[index] = std::unique_ptr<HiddenLayer<TValue>>(new HiddenLayer<TValue>(InputNeuronCount(index), neurons, this));
 		if (index + 1 < items.size())
 			items[index + 1] = std::unique_ptr<HiddenLayer<TValue>>(new HiddenLayer<TValue>(neurons, items[index + 1]->Weight.Column(), this));
 	}

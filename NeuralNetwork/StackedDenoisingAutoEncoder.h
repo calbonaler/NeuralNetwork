@@ -25,7 +25,7 @@ public:
 	/// <param name="neurons">SDA の出力層のニューロン数を指定します。</param>
 	void SetLogisticRegressionLayer(unsigned int neurons)
 	{
-		outputLayer = std::unique_ptr<LogisticRegressionLayer<TValue>>(new LogisticRegressionLayer<TValue>(HiddenLayers[HiddenLayers.Count() - 1].Weight.Row(), neurons));
+		outputLayer = std::unique_ptr<LogisticRegressionLayer<TValue>>(new LogisticRegressionLayer<TValue>(HiddenLayers.InputNeuronCount(HiddenLayers.Count()), neurons));
 		HiddenLayers.Freeze();
 	}
 
