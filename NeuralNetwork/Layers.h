@@ -230,7 +230,7 @@ public:
 	/// <summary>乱数生成器のシード値と入力層のユニット数を指定して、<see cref="HiddenLayerCollection"/> クラスの新しいインスタンスを初期化します。</summary>
 	/// <param name="rngSeed">隠れ層の計算に使用される乱数生成器のシード値を指定します。</param>
 	/// <param name="nIn">入力層のユニット数を指定します。</param>
-	HiddenLayerCollection(std::mt19937::result_type rngSeed, size_t nIn) : HiddenLayerCollectionBase(rngSeed), nextLayerInputUnits(nIn), frozen(false) { }
+	HiddenLayerCollection(std::mt19937::result_type rngSeed, size_t nIn) : HiddenLayerCollectionBase(rngSeed), nIn(nIn), frozen(false) { }
 
 	/// <summary>指定された層の入力ベクトルを計算します。層が指定されない場合、このメソッドは出力層の入力ベクトルを計算します。</summary>
 	/// <param name="input">最初の隠れ層に与える入力を指定します。</param>
@@ -253,15 +253,12 @@ public:
 			throw std::domain_error("freezed collection cannot be changed");
 		if (index > items.size())
 			throw std::out_of_range("index less than or equal to Count()");
+		auto beforeNeurons = index <= 0 ? nIn : items[index - 1]->Weight.Row();
 		if (index == items.size())
-		{
-			items.push_back(std::unique_ptr<HiddenLayer<TValue>>(new HiddenLayer<TValue>(nextLayerInputUnits, neurons, this)));
-			nextLayerInputUnits = neurons;
-			return;
-		}
-		items[index] = std::unique_ptr<HiddenLayer<TValue>>(new HiddenLayer<TValue>(items[index]->Weight.Column(), neurons, this));
-		if (index < items.size() - 1)
-			items[index + 1] = std::unique_ptr<HiddenLayer<TValue>>(new HiddenLayer<TValue>(neurons, items[index + 1]->Weight.Row(), this));
+			items.push_back(std::unique_ptr<HiddenLayer<TValue>>());
+		items[index] = std::unique_ptr<HiddenLayer<TValue>>(new HiddenLayer<TValue>(beforeNeurons, neurons, this));
+		if (index + 1 < items.size())
+			items[index + 1] = std::unique_ptr<HiddenLayer<TValue>>(new HiddenLayer<TValue>(neurons, items[index + 1]->Weight.Column(), this));
 	}
 
 	/// <summary>このコレクションを固定して変更不可能にします。</summary>
@@ -278,7 +275,7 @@ public:
 
 private:
 	bool frozen;
-	size_t nextLayerInputUnits;
+	size_t nIn;
 	std::vector<std::unique_ptr<HiddenLayer<TValue>>> items;
 };
 
