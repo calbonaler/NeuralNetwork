@@ -9,12 +9,13 @@ int main()
 {
 	//auto ls = MnistLoader<Floating>().Load("MNIST");
 	//auto ls = PatternRecognitionLoader<Floating>().Load("PR");
-	auto newLs = Caltech101SilhouettesLoader<Floating>().Load("Caltech101Silhouettes");
-	//LearningSet<Floating> newLs;
-	//newLs.ClassCount = ls.ClassCount;
-	//newLs.TrainingData().From(std::move(ls.TrainingData()), 0, 50000);
-	//newLs.ValidationData().From(std::move(ls.TrainingData()), 50000, 10000);
-	//newLs.TestData().From(std::move(ls.TestData()), 0, 10000);
+	auto ls = Cifar10Loader<Floating>().Load("cifar-10-batches-bin");
+	//auto newLs = Caltech101SilhouettesLoader<Floating>().Load("Caltech101Silhouettes");
+	LearningSet<Floating> newLs;
+	newLs.ClassCount = ls.ClassCount;
+	newLs.TrainingData().From(std::move(ls.TrainingData()), 0, 40000);
+	newLs.ValidationData().From(std::move(ls.TrainingData()), 40000, 10000);
+	newLs.TestData().From(std::move(ls.TestData()), 0, 10000);
 	TestSdA(newLs);
 	return 0;
 }
@@ -100,7 +101,7 @@ private:
 	}
 };
 
-const double ConvergeConstant = 0.5;
+const double ConvergeConstant = 0.1;
 
 template <class TValue, class TNoise> bool PreTrain(std::ofstream& output, HiddenLayerCollection<TValue>& hiddenLayers, unsigned int i, unsigned int neurons, TNoise noise, const LearningSet<TValue>& datasets, double& lastNeuronCost, unsigned int lastNeurons)
 {

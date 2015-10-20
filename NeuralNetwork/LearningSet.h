@@ -289,6 +289,60 @@ private:
 	}
 };
 
+template <class TValue> class Cifar10Loader final : public LearningSetLoader<TValue>
+{
+protected:
+	virtual void LoadDataSet(DataSet<TValue>& dataset, const std::string& path)
+	{
+		if (!LoadSingleFile(dataset, path))
+		{
+			unsigned int i = 1;
+			while (LoadSingleFile(dataset, path + "_" + std::to_string(i)))
+				i++;
+		}
+		dataset.Images().shrink_to_fit();
+		dataset.Labels().shrink_to_fit();
+	}
+
+	virtual std::string GetTrainingPath(const std::string& path) { return path + "/data_batch"; }
+
+	virtual std::string GetTestPath(const std::string& path) { return path + "/test_batch"; }
+
+private:
+	bool LoadSingleFile(DataSet<TValue>& dataset, const std::string& path)
+	{
+		std::ifstream file(path + ".bin", std::ios::binary | std::ios::in);
+		if (!file)
+			return false;
+		dataset.SetDimension(32, 32);
+		for (size_t i = 0; i < 10000; i++)
+		{
+			dataset.Labels().push_back(ReadByte(file));
+			std::valarray<uint8_t> reds(dataset.Row() * dataset.Column());
+			for (size_t j = 0; j < reds.size(); j++)
+				reds[j] = ReadByte(file);
+			std::valarray<uint8_t> greens(dataset.Row() * dataset.Column());
+			for (size_t j = 0; j < greens.size(); j++)
+				greens[j] = ReadByte(file);
+			std::valarray<TValue> image(dataset.Row() * dataset.Column());
+			for (size_t j = 0; j < image.size(); j++)
+			{
+				auto blue = ReadByte(file);
+				image[j] = static_cast<TValue>(0.299 * reds[j] + 0.587 * greens[j] + 0.114 * blue) / (std::numeric_limits<uint8_t>::max)();
+			}
+			dataset.Images().push_back(std::move(image));
+		}
+		return true;
+	}
+
+	uint8_t ReadByte(std::ifstream& stream)
+	{
+		uint8_t temp;
+		stream.read(pointer_cast<char>(&temp), sizeof(temp));
+		return temp;
+	}
+};
+
 template <class TValue> class Caltech101SilhouettesLoader final : public LearningSetLoader<TValue>
 {
 protected:
