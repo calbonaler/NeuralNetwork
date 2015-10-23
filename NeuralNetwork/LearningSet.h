@@ -374,7 +374,7 @@ protected:
 		dataset.Allocate(length, oneSide, oneSide, 1);
 		for (uint32_t i = 0; i < length; i++)
 		{
-			dataset.Labels()[i] = ReadByte(labelFile);
+			dataset.Labels()[i] = static_cast<unsigned int>(ReadByte(labelFile) - 1);
 			for (uint32_t j = 0; j < imageLength; j++)
 				dataset.Images()[i][j] = static_cast<TValue>(ReadByte(imageFile)); // value is either 0 or 1
 		}
