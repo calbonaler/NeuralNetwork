@@ -28,7 +28,11 @@ int main()
 
 	std::ofstream output("output.log");
 	bufchanger clogbufchanger(output.rdbuf());
-	TestSdA(LoadLearningSet<Floating>(DataSetKind::Caltech101Silhouettes));
+	auto ls = LoadLearningSet<Floating>(DataSetKind::Caltech101Silhouettes);
+	auto start = std::chrono::system_clock::now();
+	TestSdA(ls);
+	auto end = std::chrono::system_clock::now();
+	std::cout << "Elapsed time (seconds): " << std::chrono::duration_cast<std::chrono::seconds>(end - start).count() << std::endl;
 	return 0;
 }
 
@@ -216,10 +220,6 @@ template <class TValue> void FineTune(StackedDenoisingAutoEncoder<TValue>& sda, 
 
 template <class TValue> void TestSdA(const LearningSet<TValue>& datasets)
 {
-	using namespace std::chrono;
-
-	auto start = system_clock::now();
-
 	const struct
 	{
 		unsigned int MinNeurons;
@@ -249,7 +249,4 @@ template <class TValue> void TestSdA(const LearningSet<TValue>& datasets)
 	}
 
 	FineTune(sda, datasets);
-
-	auto end = system_clock::now();
-	std::cout << "Elapsed time (seconds): " << duration_cast<seconds>(end - start).count() << std::endl;
 }
