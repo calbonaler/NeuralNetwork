@@ -16,6 +16,18 @@ typedef double Floating;
 
 int main()
 {
+	class bufchanger
+	{
+	public:
+		bufchanger(std::streambuf* newBuf) { last = std::clog.rdbuf(newBuf); }
+		~bufchanger() { std::clog.rdbuf(last); }
+
+	private:
+		std::streambuf* last;
+	};
+
+	std::ofstream output("output.log");
+	bufchanger clogbufchanger(output.rdbuf());
 	TestSdA(LoadLearningSet<Floating>(DataSetKind::Caltech101Silhouettes));
 	return 0;
 }
@@ -133,7 +145,7 @@ private:
 
 const double ConvergeConstant = 0.5;
 
-template <class TValue, class TNoise> bool PreTrain(std::ofstream& output, HiddenLayerCollection<TValue>& hiddenLayers, unsigned int i, unsigned int neurons, TNoise noise, const LearningSet<TValue>& datasets, double& lastNeuronCost, unsigned int lastNeurons)
+template <class TValue, class TNoise> bool PreTrain(HiddenLayerCollection<TValue>& hiddenLayers, unsigned int i, unsigned int neurons, TNoise noise, const LearningSet<TValue>& datasets, double& lastNeuronCost, unsigned int lastNeurons)
 {
 	const int PreTrainingEpochs = 15;
 	const TValue PreTrainingLearningRate = static_cast<TValue>(0.001);
@@ -156,8 +168,8 @@ template <class TValue, class TNoise> bool PreTrain(std::ofstream& output, Hidde
 		//	}
 		//	auto predictedTestCost = predictor(epoch);
 		//	std::cout << boost::format("%2d %10lf %10lf") % epoch % testCost % predictedTestCost << std::endl;
-		//	output << boost::format("PT %d %d %lf %lf") % neurons % epoch % testCost % predictedTestCost << std::endl;
-		//	//if (epoch == 4 && !IsConverged(lastNeuronCost, predictor(PreTrainingEpochs), output))
+		//	std::clog << boost::format("PT %d %d %lf %lf") % neurons % epoch % testCost % predictedTestCost << std::endl;
+		//	//if (epoch == 4 && !IsConverged(lastNeuronCost, predictor(PreTrainingEpochs)))
 		//	//{
 		//	//	lastNeuronCost = predictor(PreTrainingEpochs);
 		//	//	return false;
@@ -166,7 +178,7 @@ template <class TValue, class TNoise> bool PreTrain(std::ofstream& output, Hidde
 		//else
 		{
 			std::cout << boost::format("%2d %lf") % epoch % currentTestCost << std::endl;
-			output << boost::format("PT %d %d %d %lf") % i % neurons % epoch % currentTestCost << std::endl;
+			std::clog << boost::format("PT %d %d %d %lf") % i % neurons % epoch % currentTestCost << std::endl;
 		}
 	}
 	auto costRelativeError = abs((currentTestCost - lastNeuronCost) / (neurons - lastNeurons));
@@ -175,7 +187,7 @@ template <class TValue, class TNoise> bool PreTrain(std::ofstream& output, Hidde
 	return costRelativeError <= ConvergeConstant;
 }
 
-template <class TValue> void FineTune(std::ofstream& output, StackedDenoisingAutoEncoder<TValue>& sda, const LearningSet<TValue>& datasets)
+template <class TValue> void FineTune(StackedDenoisingAutoEncoder<TValue>& sda, const LearningSet<TValue>& datasets)
 {
 	const unsigned int FineTuningEpochs = 1000;
 	const TValue FineTuningLearningRate = static_cast<TValue>(0.01);
@@ -191,7 +203,7 @@ template <class TValue> void FineTune(std::ofstream& output, StackedDenoisingAut
 		sda.FineTune(datasets.TrainingData(), FineTuningLearningRate);
 		auto thisTestScore = sda.ComputeErrorRates<Floating>(datasets.TestData());
 		std::cout << boost::format("%4d %lf%%") % epoch % (thisTestScore * 100.0) << std::endl;
-		output << boost::format("FT %d %lf") % epoch % thisTestScore << std::endl;
+		std::clog << boost::format("FT %d %lf") % epoch % thisTestScore << std::endl;
 
 		if (thisTestScore < bestTestScore)
 		{
@@ -225,21 +237,18 @@ template <class TValue> void TestSdA(const LearningSet<TValue>& datasets)
 	std::random_device random;
 	StackedDenoisingAutoEncoder<TValue> sda(random(), datasets.TrainingData().AllComponents());
 	
-	std::ofstream output("output.log");
-	double lastNeuronCost;
-
 	for (unsigned int i = 0; i < sizeof(LayerConfiguration) / sizeof(LayerConfiguration[0]); i++)
 	{
-		lastNeuronCost = std::numeric_limits<double>::infinity();
+		double lastNeuronCost = std::numeric_limits<double>::infinity();
 		for (unsigned int neurons = LayerConfiguration[i].MinNeurons; neurons <= LayerConfiguration[i].MaxNeurons; neurons *= LayerConfiguration[i].NeuronIncrement)
 		{
 			std::cout << "Last neuron cost: " << lastNeuronCost << std::endl;
-			if (PreTrain(output, sda.HiddenLayers, i, neurons, LayerConfiguration[i].Noise, datasets, lastNeuronCost, neurons / LayerConfiguration[i].NeuronIncrement))
+			if (PreTrain(sda.HiddenLayers, i, neurons, LayerConfiguration[i].Noise, datasets, lastNeuronCost, neurons / LayerConfiguration[i].NeuronIncrement))
 				break;
 		}
 	}
 
-	FineTune(output, sda, datasets);
+	FineTune(sda, datasets);
 
 	auto end = system_clock::now();
 	std::cout << "Elapsed time (seconds): " << duration_cast<seconds>(end - start).count() << std::endl;
