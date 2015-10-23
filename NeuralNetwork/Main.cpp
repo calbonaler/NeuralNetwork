@@ -42,25 +42,40 @@ const unsigned int MinNeurons = 1;
 const unsigned int NeuronIncease = 2;
 const double ConvergeConstant = 0.5;
 
+class teed_out
+{
+public:
+	teed_out() { }
+	~teed_out() { close(); }
+
+	void open(const std::string& outFileName)
+	{
+		outfile.open(outFileName);
+		s.open(boost::iostreams::tee_device<std::ostream, std::ofstream>(std::cout, outfile));
+	}
+	void close()
+	{
+		s.close();
+		outfile.flush();
+		outfile.close();
+	}
+	
+	boost::iostreams::stream<boost::iostreams::tee_device<std::ostream, std::ofstream>> s;
+
+private:
+	std::ofstream outfile;
+};
+
+teed_out tout;
+
 int main()
 {
-	class bufchanger
-	{
-	public:
-		bufchanger(std::streambuf* newBuf) { last = std::clog.rdbuf(newBuf); }
-		~bufchanger() { std::clog.rdbuf(last); }
-
-	private:
-		std::streambuf* last;
-	};
-
-	std::ofstream output("output.log");
-	bufchanger clogbufchanger(output.rdbuf());
+	tout.open("output.log");
 	auto ls = LoadLearningSet<Floating>(DataSetKind::Caltech101Silhouettes);
 	auto start = std::chrono::system_clock::now();
 	TestSdA(ls);
 	auto end = std::chrono::system_clock::now();
-	std::cout << "Elapsed time (seconds): " << std::chrono::duration_cast<std::chrono::seconds>(end - start).count() << std::endl;
+	tout.s << "Elapsed time (seconds): " << std::chrono::duration_cast<std::chrono::seconds>(end - start).count() << std::endl;
 	return 0;
 }
 
@@ -180,7 +195,7 @@ template <class TValue, class TNoise> bool PreTrain(HiddenLayerCollection<TValue
 	//LossPredictor<double, 3> predictor;
 	double currentTestCost;
 	hiddenLayers.Set(i, neurons);
-	std::cout << boost::format("Number of neurons of pre-training layer %d is %d") % i % neurons << std::endl;
+	tout.s << boost::format("Number of neurons of pre-training layer %d is %d") % i % neurons << std::endl;
 	for (unsigned int epoch = 1; epoch <= PreTrainingEpochs; epoch++)
 	{
 		hiddenLayers[i].Train(datasets.TrainingData(), static_cast<TValue>(PreTrainingLearningRate), noise);
@@ -191,11 +206,10 @@ template <class TValue, class TNoise> bool PreTrain(HiddenLayerCollection<TValue
 		//	if (epoch == 4)
 		//	{
 		//		predictor.Setup(epoch);
-		//		std::cout << "Prediction Expression: " << predictor.GetExpression() << std::endl;
+		//		tout.s << "Prediction Expression: " << predictor.GetExpression() << std::endl;
 		//	}
 		//	auto predictedTestCost = predictor(epoch);
-		//	std::cout << boost::format("%2d %10lf %10lf") % epoch % testCost % predictedTestCost << std::endl;
-		//	std::clog << boost::format("PT %d %d %lf %lf") % neurons % epoch % testCost % predictedTestCost << std::endl;
+		//	tout.s << boost::format("%2d %10lf %10lf") % epoch % testCost % predictedTestCost << std::endl;
 		//	//if (epoch == 4 && !IsConverged(lastNeuronCost, predictor(PreTrainingEpochs)))
 		//	//{
 		//	//	lastNeuronCost = predictor(PreTrainingEpochs);
@@ -204,12 +218,11 @@ template <class TValue, class TNoise> bool PreTrain(HiddenLayerCollection<TValue
 		//}
 		//else
 		{
-			std::cout << boost::format("%2d %lf") % epoch % currentTestCost << std::endl;
-			std::clog << boost::format("PT %d %d %d %lf") % i % neurons % epoch % currentTestCost << std::endl;
+			tout.s << boost::format("%d %lf") % epoch % currentTestCost << std::endl;
 		}
 	}
 	auto costRelativeError = abs((currentTestCost - lastNeuronCost) / (neurons - lastNeurons));
-	std::cout << "Cost relative error: " << costRelativeError << std::endl;
+	tout.s << "Cost relative error: " << costRelativeError << std::endl;
 	lastNeuronCost = currentTestCost;
 	return costRelativeError <= ConvergeConstant;
 }
@@ -218,13 +231,12 @@ template <class TValue> void FineTune(StackedDenoisingAutoEncoder<TValue>& sda, 
 {
 	double bestTestScore = std::numeric_limits<double>::infinity();
 	sda.SetLogisticRegressionLayer(datasets.ClassCount);
-	std::cout << "Fine-Tuning..." << std::endl;
+	tout.s << "Fine-Tuning..." << std::endl;
 	for (unsigned int epoch = 1, patience = DefaultPatience; epoch <= FineTuningEpochs && epoch <= patience; epoch++)
 	{
 		sda.FineTune(datasets.TrainingData(), static_cast<TValue>(FineTuningLearningRate));
 		auto thisTestScore = sda.ComputeErrorRates<Floating>(datasets.TestData());
-		std::cout << boost::format("%4d %lf%%") % epoch % (thisTestScore * 100.0) << std::endl;
-		std::clog << boost::format("FT %d %lf") % epoch % thisTestScore << std::endl;
+		tout.s << boost::format("%d %lf%%") % epoch % (thisTestScore * 100.0) << std::endl;
 
 		if (thisTestScore < bestTestScore)
 		{

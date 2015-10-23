@@ -25,3 +25,5 @@
 
 #include <boost/core/noncopyable.hpp>
 #include <boost/format.hpp>
+#include <boost/iostreams/tee.hpp>
+#include <boost/iostreams/stream.hpp>
