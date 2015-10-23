@@ -7,15 +7,36 @@ typedef double Floating;
 
 int main()
 {
-	//auto ls = MnistLoader<Floating>().Load("MNIST");
-	//auto ls = PatternRecognitionLoader<Floating>().Load("PR");
-	auto ls = Cifar10Loader<Floating>().Load("cifar-10-batches-bin");
-	//auto newLs = Caltech101SilhouettesLoader<Floating>().Load("Caltech101Silhouettes");
+	enum class DataSetKind
+	{
+		MNIST,
+		Cifar10,
+		Caltech101Silhouettes,
+		PR,
+	} usingDataSet = DataSetKind::Caltech101Silhouettes;
 	LearningSet<Floating> newLs;
-	newLs.ClassCount = ls.ClassCount;
-	newLs.TrainingData().From(std::move(ls.TrainingData()), 0, 40000);
-	newLs.ValidationData().From(std::move(ls.TrainingData()), 40000, 10000);
-	newLs.TestData().From(std::move(ls.TestData()), 0, 10000);
+	if (usingDataSet == DataSetKind::MNIST)
+	{
+		auto ls = MnistLoader<Floating>().Load("MNIST");
+		newLs.ClassCount = ls.ClassCount;
+		newLs.TrainingData().From(std::move(ls.TrainingData()), 0, 50000);
+		newLs.ValidationData().From(std::move(ls.TrainingData()), 50000, 10000);
+		newLs.TestData().From(std::move(ls.TestData()), 0, 10000);
+	}
+	else if (usingDataSet == DataSetKind::Cifar10)
+	{
+		auto ls = Cifar10Loader<Floating>().Load("cifar-10-batches-bin");
+		newLs.ClassCount = ls.ClassCount;
+		newLs.TrainingData().From(std::move(ls.TrainingData()), 0, 40000);
+		newLs.ValidationData().From(std::move(ls.TrainingData()), 40000, 10000);
+		newLs.TestData().From(std::move(ls.TestData()), 0, 10000);
+	}
+	else if (usingDataSet == DataSetKind::Caltech101Silhouettes)
+		newLs = Caltech101SilhouettesLoader<Floating>().Load("Caltech101Silhouettes");
+	else if (usingDataSet == DataSetKind::PR)
+		newLs = PatternRecognitionLoader<Floating>().Load("PR");
+	else
+		return -1;
 	TestSdA(newLs);
 	return 0;
 }
@@ -101,7 +122,7 @@ private:
 	}
 };
 
-const double ConvergeConstant = 0.1;
+const double ConvergeConstant = 0.5;
 
 template <class TValue, class TNoise> bool PreTrain(std::ofstream& output, HiddenLayerCollection<TValue>& hiddenLayers, unsigned int i, unsigned int neurons, TNoise noise, const LearningSet<TValue>& datasets, double& lastNeuronCost, unsigned int lastNeurons)
 {
