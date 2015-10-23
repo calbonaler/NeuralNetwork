@@ -193,7 +193,7 @@ template <class TValue> void TestSdA(const LearningSet<TValue>& datasets)
 
 	// seed: 89677
 	std::random_device random;
-	StackedDenoisingAutoEncoder<TValue> sda(random(), datasets.TrainingData().Row() * datasets.TrainingData().Column());
+	StackedDenoisingAutoEncoder<TValue> sda(random(), datasets.TrainingData().AllComponents());
 	
 	std::ofstream output("output.log");
 	double lastNeuronCost;

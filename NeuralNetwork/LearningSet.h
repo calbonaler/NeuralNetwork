@@ -5,34 +5,34 @@ template <class TValue> class DataSet final
 {
 public:
 	/// <summary><see cref="DataSet"/> クラスの新しいインスタンスを初期化します。</summary>
-	DataSet() : row(0), column(0) { }
+	DataSet() : row(0), column(0), components(0) { }
 
 	/// <summary>指定されたデータセットのデータをコピーして、<see cref="DataSet"/> クラスの新しいインスタンスを初期化します。</summary>
 	/// <param name="dataset">コピー元のデータセットを指定します。</param>
-	DataSet(const DataSet& dataset) : row(0), column(0) { From(dataset, dataset.labels.size()); }
+	DataSet(const DataSet& dataset) : row(0), column(0), components(0) { From(dataset, dataset.labels.size()); }
 
 	/// <summary>指定されたデータセットのデータを移動して、<see cref="DataSet"/> クラスの新しいインスタンスを初期化します。</summary>
 	/// <param name="dataset">移動元のデータセットを指定します。</param>
-	DataSet(DataSet&& dataset) : row(0), column(0) { *this = std::move(dataset); }
+	DataSet(DataSet&& dataset) : row(0), column(0), components(0) { *this = std::move(dataset); }
 
 	/// <summary>指定されたデータセットのデータの一部を使用して、<see cref="DataSet"/> クラスの新しいインスタンスを初期化します。</summary>
 	/// <param name="dataset">基になるデータセットを指定します。</param>
 	/// <param name = "index"><paramref name="dataset"/> 内のコピーが開始される位置を指定します。</param>
 	/// <param name="count"><paramref name="dataset"/> からこのデータセットにコピーされるデータ数を指定します。</param>
-	DataSet(const DataSet& dataset, size_t index, size_t count) : row(0), column(0) { CopyFrom(dataset, index, count); }
+	DataSet(const DataSet& dataset, size_t index, size_t count) : row(0), column(0), components(0) { From(dataset, index, count); }
 
 	/// <summary>指定されたデータセットのデータの一部を使用して、<see cref="DataSet"/> クラスの新しいインスタンスを初期化します。</summary>
 	/// <param name="dataset">基になるデータセットを指定します。</param>
 	/// <param name = "index"><paramref name="dataset"/> 内の移動が開始される位置を指定します。</param>
 	/// <param name="count"><paramref name="dataset"/> からこのデータセットに移動されるデータ数を指定します。</param>
-	DataSet(DataSet&& dataset, size_t index, size_t count) : row(0), column(0) { From(dataset, index, count); }
+	DataSet(DataSet&& dataset, size_t index, size_t count) : row(0), column(0), components(0) { From(dataset, index, count); }
 
 	/// <summary>指定されたデータセットからこのデータセットにデータをコピーします。</summary>
 	/// <param name="dataset">データのコピー元のデータセットを指定します。</param>
 	/// <returns>このデータセットへの参照。</returns>
 	DataSet& operator=(const DataSet& dataset)
 	{
-		CopyFrom(dataset, dataset.labels.size());
+		From(dataset, dataset.labels.size());
 		return *this;
 	}
 
@@ -47,9 +47,11 @@ public:
 			images = std::move(dataset.images);
 			row = dataset.row;
 			column = dataset.column;
+			components = dataset.components;
 
 			dataset.row = 0;
 			dataset.column = 0;
+			dataset.components = 0;
 		}
 		return *this;
 	}
@@ -64,7 +66,7 @@ public:
 			throw std::invalid_argument("count must not be negative.");
 		if (index < 0 || index > dataset.labels.size() - count)
 			throw std::invalid_argument("index must be in range [0, dataset.Labels().size() - count]");
-		Allocate(count, dataset.row, dataset.column);
+		Allocate(count, dataset.row, dataset.column, dataset.components);
 		for (unsigned int i = 0; i < count; i++)
 		{
 			labels[i] = dataset.labels[i + index];
@@ -82,7 +84,7 @@ public:
 			throw std::invalid_argument("count must not be negative.");
 		if (index < 0 || index > dataset.labels.size() - count)
 			throw std::invalid_argument("index must be in range [0, dataset.Labels().size() - count]");
-		Allocate(count, dataset.row, dataset.column);
+		Allocate(count, dataset.row, dataset.column, dataset.components);
 		for (unsigned int i = 0; i < count; i++)
 		{
 			labels[i] = std::move(dataset.labels[i + index]);
@@ -94,25 +96,29 @@ public:
 	/// <param name="length">総パターン数を指定します。</param>
 	/// <param name="newRow">画像の垂直方向の長さを指定します。</param>
 	/// <param name="newColumn">画像の水平方向の長さを指定します。</param>
-	void Allocate(size_t length, unsigned int newRow, unsigned int newColumn)
+	/// <param name="newComponents">画像の 1 画素を示すのに必要な要素の数を指定します。</param>
+	void Allocate(size_t length, unsigned int newRow, unsigned int newColumn, unsigned int newComponents)
 	{
 		if (newRow <= 0 || newColumn <= 0)
 			throw std::invalid_argument("newRow and newColumn must not be 0");
 		labels.resize(length);
 		images.resize(length);
 		for (size_t i = 0; i < length; i++)
-			images[i].resize(newRow * newColumn);
+			images[i].resize(newRow * newColumn * newComponents);
 		row = newRow;
 		column = newColumn;
+		components = newComponents;
 	}
 
-	/// <summary>画像の垂直および水平方向の長さを設定します。</summary>
+	/// <summary>画像の垂直および水平方向の長さと 1 画素を示すのに必要な要素数を設定します。</summary>
 	/// <param name="newRow">画像の垂直方向の長さを指定します。</param>
 	/// <param name="newColumn">画像の水平方向の長さを指定します。</param>
-	void SetDimension(unsigned int newRow, unsigned int newColumn)
+	/// <param name="newComponents">画像の 1 画素を示すの必要な要素の数を指定します。</param>
+	void SetDimension(unsigned int newRow, unsigned int newColumn, unsigned int newComponents)
 	{
 		row = newRow;
 		column = newColumn;
+		components = newComponents;
 	}
 
 	/// <summary>画像の垂直方向の長さを取得します。</summary>
@@ -120,6 +126,15 @@ public:
 
 	/// <summary>画像の水平方向の長さを取得します。</summary>
 	unsigned int Column() const { return column; }
+
+	/// <summary>画像の 1 画素を示すの必要な要素の数を取得します。</summary>
+	unsigned int ComponentsPerPixel() const { return components; }
+
+	/// <summary>画像全体の画素数を取得します。</summary>
+	unsigned int Pixels() const { return row * column; }
+
+	/// <summary>画像全体を表現するのに必要な要素の数を取得します。</summary>
+	unsigned int AllComponents() const { return row * column * components; }
 
 	/// <summary>確保されたラベルの保存領域へのポインタを返します。</summary>
 	std::vector<unsigned int>& Labels() { return labels; }
@@ -136,6 +151,7 @@ public:
 private:
 	unsigned int row;
 	unsigned int column;
+	unsigned int components;
 	std::vector<unsigned int> labels;
 	std::vector<std::valarray<TValue>> images;
 };
@@ -256,7 +272,7 @@ protected:
 		auto row = ReadInt32BigEndian(imageFile);
 		auto column = ReadInt32BigEndian(imageFile);
 		auto imageLength = row * column;
-		dataset.Allocate(length, row, column);
+		dataset.Allocate(length, row, column, 1);
 		for (uint32_t i = 0; i < length; i++)
 		{
 			dataset.Labels()[i] = ReadByte(labelFile);
@@ -314,17 +330,17 @@ private:
 		std::ifstream file(path + ".bin", std::ios::binary | std::ios::in);
 		if (!file)
 			return false;
-		dataset.SetDimension(32, 32);
+		dataset.SetDimension(32, 32, 1);
 		for (size_t i = 0; i < 10000; i++)
 		{
 			dataset.Labels().push_back(ReadByte(file));
-			std::valarray<uint8_t> reds(dataset.Row() * dataset.Column());
+			std::valarray<uint8_t> reds(dataset.Pixels());
 			for (size_t j = 0; j < reds.size(); j++)
 				reds[j] = ReadByte(file);
-			std::valarray<uint8_t> greens(dataset.Row() * dataset.Column());
+			std::valarray<uint8_t> greens(dataset.Pixels());
 			for (size_t j = 0; j < greens.size(); j++)
 				greens[j] = ReadByte(file);
-			std::valarray<TValue> image(dataset.Row() * dataset.Column());
+			std::valarray<TValue> image(dataset.Pixels());
 			for (size_t j = 0; j < image.size(); j++)
 			{
 				auto blue = ReadByte(file);
@@ -355,7 +371,7 @@ protected:
 			return;
 		auto imageLength = ReadInt32(imageFile);
 		auto oneSide = static_cast<unsigned int>(sqrt(imageLength));
-		dataset.Allocate(length, oneSide, oneSide);
+		dataset.Allocate(length, oneSide, oneSide, 1);
 		for (uint32_t i = 0; i < length; i++)
 		{
 			dataset.Labels()[i] = ReadByte(labelFile);
@@ -393,7 +409,7 @@ template <class TValue> class PatternRecognitionLoader final : public LearningSe
 protected:
 	virtual void LoadDataSet(DataSet<TValue>& dataset, const std::string& path)
 	{
-		dataset.SetDimension(7, 5);
+		dataset.SetDimension(7, 5, 1);
 		std::ifstream file(path, std::ios::in);
 		std::string line;
 		while (std::getline(file, line))
@@ -403,7 +419,7 @@ protected:
 			if (!std::getline(ss, item, ','))
 				continue;
 			dataset.Labels().push_back(static_cast<unsigned int>(std::stoul(item)));
-			std::valarray<TValue> image(dataset.Row() * dataset.Column());
+			std::valarray<TValue> image(dataset.AllComponents());
 			size_t i = 0;
 			while (std::getline(ss, item, ','))
 				image[i++] = std::stod(item);
