@@ -1,44 +1,53 @@
 ﻿#include "StackedDenoisingAutoEncoder.h"
 #include "ShiftRegister.h"
 
+enum class DataSetKind
+{
+	MNIST,
+	Cifar10,
+	Caltech101Silhouettes,
+	PR,
+};
+
+template <class TValue> LearningSet<TValue> LoadLearningSet(DataSetKind kind);
 template <class TValue> void TestSdA(const LearningSet<TValue>& datasets);
 
 typedef double Floating;
 
 int main()
 {
-	enum class DataSetKind
+	TestSdA(LoadLearningSet<Floating>(DataSetKind::Caltech101Silhouettes));
+	return 0;
+}
+
+template <class TValue> LearningSet<TValue> LoadLearningSet(DataSetKind kind)
+{
+	if (kind == DataSetKind::MNIST)
 	{
-		MNIST,
-		Cifar10,
-		Caltech101Silhouettes,
-		PR,
-	} usingDataSet = DataSetKind::Caltech101Silhouettes;
-	LearningSet<Floating> newLs;
-	if (usingDataSet == DataSetKind::MNIST)
-	{
-		auto ls = MnistLoader<Floating>().Load("MNIST");
+		auto ls = MnistLoader<TValue>().Load("MNIST");
+		LearningSet<TValue> newLs;
 		newLs.ClassCount = ls.ClassCount;
 		newLs.TrainingData().From(std::move(ls.TrainingData()), 0, 50000);
 		newLs.ValidationData().From(std::move(ls.TrainingData()), 50000, 10000);
 		newLs.TestData().From(std::move(ls.TestData()), 0, 10000);
+		return std::move(newLs);
 	}
-	else if (usingDataSet == DataSetKind::Cifar10)
+	else if (kind == DataSetKind::Cifar10)
 	{
-		auto ls = Cifar10Loader<Floating>().Load("cifar-10-batches-bin");
+		auto ls = Cifar10Loader<TValue>().Load("cifar-10-batches-bin");
+		LearningSet<TValue> newLs;
 		newLs.ClassCount = ls.ClassCount;
 		newLs.TrainingData().From(std::move(ls.TrainingData()), 0, 40000);
 		newLs.ValidationData().From(std::move(ls.TrainingData()), 40000, 10000);
 		newLs.TestData().From(std::move(ls.TestData()), 0, 10000);
+		return std::move(newLs);
 	}
-	else if (usingDataSet == DataSetKind::Caltech101Silhouettes)
-		newLs = Caltech101SilhouettesLoader<Floating>().Load("Caltech101Silhouettes");
-	else if (usingDataSet == DataSetKind::PR)
-		newLs = PatternRecognitionLoader<Floating>().Load("PR");
+	else if (kind == DataSetKind::Caltech101Silhouettes)
+		return std::move(Caltech101SilhouettesLoader<TValue>().Load("Caltech101Silhouettes"));
+	else if (kind == DataSetKind::PR)
+		return std::move(PatternRecognitionLoader<TValue>().Load("PR"));
 	else
-		return -1;
-	TestSdA(newLs);
-	return 0;
+		return std::move(LearningSet<TValue>());
 }
 
 // ニューロン数自動化 メモ
