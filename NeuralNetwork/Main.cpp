@@ -70,7 +70,6 @@ teed_out tout;
 
 void ShowParameters()
 {
-	tout.s << "All parameters of this experiment are as follows: " << std::endl;
 	tout.s << "Pre-Training: " << std::endl;
 	tout.s << "    Epochs: " << PreTrainingEpochs << std::endl;
 	tout.s << "    Learning Rate: " << PreTrainingLearningRate << std::endl;
@@ -98,7 +97,7 @@ int main()
 	auto start = std::chrono::system_clock::now();
 	TestSdA(ls);
 	auto end = std::chrono::system_clock::now();
-	tout.s << "Elapsed time (seconds): " << std::chrono::duration_cast<std::chrono::seconds>(end - start).count() << std::endl;
+	tout.s << "Elapsed Time (Seconds): " << std::chrono::duration_cast<std::chrono::seconds>(end - start).count() << std::endl;
 	return 0;
 }
 
@@ -213,63 +212,6 @@ private:
 	}
 };
 
-template <class TValue, class TNoise> bool PreTrain(HiddenLayerCollection<TValue>& hiddenLayers, unsigned int i, unsigned int neurons, TNoise noise, const LearningSet<TValue>& datasets, double& lastNeuronCost, unsigned int lastNeurons)
-{
-	//LossPredictor<double, 3> predictor;
-	double currentTestCost;
-	hiddenLayers.Set(i, neurons);
-	tout.s << boost::format("Number of neurons of pre-training layer %d is %d") % i % neurons << std::endl;
-	for (unsigned int epoch = 1; epoch <= PreTrainingEpochs; epoch++)
-	{
-		hiddenLayers[i].Train(datasets.TrainingData(), static_cast<TValue>(PreTrainingLearningRate), noise);
-		currentTestCost = hiddenLayers[i].ComputeCost(datasets.ValidationData(), noise);
-		//predictor.PushLoss(testCost);
-		//if (epoch >= 4)
-		//{
-		//	if (epoch == 4)
-		//	{
-		//		predictor.Setup(epoch);
-		//		tout.s << "Prediction Expression: " << predictor.GetExpression() << std::endl;
-		//	}
-		//	auto predictedTestCost = predictor(epoch);
-		//	tout.s << boost::format("%2d %10lf %10lf") % epoch % testCost % predictedTestCost << std::endl;
-		//	//if (epoch == 4 && !IsConverged(lastNeuronCost, predictor(PreTrainingEpochs)))
-		//	//{
-		//	//	lastNeuronCost = predictor(PreTrainingEpochs);
-		//	//	return false;
-		//	//}
-		//}
-		//else
-		{
-			tout.s << boost::format("%d %lf") % epoch % currentTestCost << std::endl;
-		}
-	}
-	auto costRelativeError = abs((currentTestCost - lastNeuronCost) / (neurons - lastNeurons));
-	tout.s << "Cost relative error: " << costRelativeError << std::endl;
-	lastNeuronCost = currentTestCost;
-	return costRelativeError <= ConvergeConstant;
-}
-
-template <class TValue> void FineTune(StackedDenoisingAutoEncoder<TValue>& sda, const LearningSet<TValue>& datasets)
-{
-	double bestTestScore = std::numeric_limits<double>::infinity();
-	sda.SetLogisticRegressionLayer(datasets.ClassCount);
-	tout.s << "Fine-Tuning..." << std::endl;
-	for (unsigned int epoch = 1, patience = DefaultPatience; epoch <= FineTuningEpochs && epoch <= patience; epoch++)
-	{
-		sda.FineTune(datasets.TrainingData(), static_cast<TValue>(FineTuningLearningRate));
-		auto thisTestScore = sda.ComputeErrorRates<Floating>(datasets.TestData());
-		tout.s << boost::format("%d %lf%%") % epoch % (thisTestScore * 100.0) << std::endl;
-
-		if (thisTestScore < bestTestScore)
-		{
-			if (thisTestScore < bestTestScore * ImprovementThreshold)
-				patience = std::max(patience, epoch * PatienceIncrease);
-			bestTestScore = thisTestScore;
-		}
-	}
-}
-
 template <class TValue> void TestSdA(const LearningSet<TValue>& datasets)
 {
 	// seed: 89677
@@ -281,10 +223,42 @@ template <class TValue> void TestSdA(const LearningSet<TValue>& datasets)
 		double lastNeuronCost = std::numeric_limits<double>::infinity();
 		for (unsigned int neurons = MinNeurons; ; neurons *= NeuronIncease)
 		{
-			if (PreTrain(sda.HiddenLayers, i, neurons, DaNoises[i], datasets, lastNeuronCost, neurons / NeuronIncease))
+			sda.HiddenLayers.Set(i, neurons);
+			tout.s << "Number of Neurons of Hidden Layer " << i << ": "<< neurons << std::endl;
+			double currentTestCost;
+			for (unsigned int epoch = 1; epoch <= PreTrainingEpochs; epoch++)
+			{
+				sda.HiddenLayers[i].Train(datasets.TrainingData(), static_cast<TValue>(PreTrainingLearningRate), DaNoises[i]);
+				currentTestCost = sda.HiddenLayers[i].ComputeCost(datasets.ValidationData(), DaNoises[i]);
+				tout.s << epoch << " " << currentTestCost << std::endl;
+			}
+			auto costDifference = abs((currentTestCost - lastNeuronCost) / (neurons * (NeuronIncease - 1) / NeuronIncease));
+			tout.s << "Cost Difference per Neuron: " << costDifference << std::endl;
+			lastNeuronCost = currentTestCost;
+			if (costDifference <= ConvergeConstant)
 				break;
 		}
 	}
+	
+	tout.s << "Decided Number of Neurons: " << std::endl;
+	for (unsigned int i = 0; i < sda.HiddenLayers.Count(); i++)
+		tout.s << "    Number of Neurons of Hidden Layer " << i << ": " << sda.HiddenLayers[i].Weight.Row() << std::endl;
 
-	FineTune(sda, datasets);
+	double bestTestScore = std::numeric_limits<double>::infinity();
+	sda.SetLogisticRegressionLayer(datasets.ClassCount);
+	tout.s << "Fine-Tuning..." << std::endl;
+	for (unsigned int epoch = 1, patience = DefaultPatience; epoch <= FineTuningEpochs && epoch <= patience; epoch++)
+	{
+		sda.FineTune(datasets.TrainingData(), static_cast<TValue>(FineTuningLearningRate));
+		auto thisTestScore = sda.ComputeErrorRates<Floating>(datasets.TestData());
+		tout.s << epoch << " " << thisTestScore * 100.0 << "%" << std::endl;
+
+		if (thisTestScore < bestTestScore)
+		{
+			if (thisTestScore < bestTestScore * ImprovementThreshold)
+				patience = std::max(patience, epoch * PatienceIncrease);
+			bestTestScore = thisTestScore;
+		}
+	}
+	tout.s << "Best Test Score of Fine-Tuning: " << bestTestScore * 100.0 << "%" << std::endl;
 }
