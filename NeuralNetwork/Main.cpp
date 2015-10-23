@@ -14,6 +14,34 @@ template <class TValue> void TestSdA(const LearningSet<TValue>& datasets);
 
 typedef double Floating;
 
+// Pre-Training Parameters
+
+const int PreTrainingEpochs = 15;
+const double PreTrainingLearningRate = 0.001;
+
+// Fine-Tuning Parameters
+
+const unsigned int FineTuningEpochs = 1000;
+const double FineTuningLearningRate = 0.01;
+const unsigned int DefaultPatience = 10;
+const double ImprovementThreshold = 1;//0.995;
+const unsigned int PatienceIncrease = 2;
+
+// Denoising Auto-Encoder Parameters
+
+const Floating DaNoises[]
+{
+	static_cast<Floating>(0.1),
+	static_cast<Floating>(0.2),
+	static_cast<Floating>(0.3),
+};
+
+// Number of Neuron Automatic Decision Parameters
+
+const unsigned int MinNeurons = 1;
+const unsigned int NeuronIncease = 2;
+const double ConvergeConstant = 0.5;
+
 int main()
 {
 	class bufchanger
@@ -147,20 +175,15 @@ private:
 	}
 };
 
-const double ConvergeConstant = 0.5;
-
 template <class TValue, class TNoise> bool PreTrain(HiddenLayerCollection<TValue>& hiddenLayers, unsigned int i, unsigned int neurons, TNoise noise, const LearningSet<TValue>& datasets, double& lastNeuronCost, unsigned int lastNeurons)
 {
-	const int PreTrainingEpochs = 15;
-	const TValue PreTrainingLearningRate = static_cast<TValue>(0.001);
-
 	//LossPredictor<double, 3> predictor;
 	double currentTestCost;
 	hiddenLayers.Set(i, neurons);
 	std::cout << boost::format("Number of neurons of pre-training layer %d is %d") % i % neurons << std::endl;
 	for (unsigned int epoch = 1; epoch <= PreTrainingEpochs; epoch++)
 	{
-		hiddenLayers[i].Train(datasets.TrainingData(), PreTrainingLearningRate, noise);
+		hiddenLayers[i].Train(datasets.TrainingData(), static_cast<TValue>(PreTrainingLearningRate), noise);
 		currentTestCost = hiddenLayers[i].ComputeCost(datasets.ValidationData(), noise);
 		//predictor.PushLoss(testCost);
 		//if (epoch >= 4)
@@ -193,18 +216,12 @@ template <class TValue, class TNoise> bool PreTrain(HiddenLayerCollection<TValue
 
 template <class TValue> void FineTune(StackedDenoisingAutoEncoder<TValue>& sda, const LearningSet<TValue>& datasets)
 {
-	const unsigned int FineTuningEpochs = 1000;
-	const TValue FineTuningLearningRate = static_cast<TValue>(0.01);
-	const unsigned int DefaultPatience = 10;
-	const double ImprovementThreshold = 1;//0.995;
-	const unsigned int PatienceIncrease = 2;
-
 	double bestTestScore = std::numeric_limits<double>::infinity();
 	sda.SetLogisticRegressionLayer(datasets.ClassCount);
 	std::cout << "Fine-Tuning..." << std::endl;
 	for (unsigned int epoch = 1, patience = DefaultPatience; epoch <= FineTuningEpochs && epoch <= patience; epoch++)
 	{
-		sda.FineTune(datasets.TrainingData(), FineTuningLearningRate);
+		sda.FineTune(datasets.TrainingData(), static_cast<TValue>(FineTuningLearningRate));
 		auto thisTestScore = sda.ComputeErrorRates<Floating>(datasets.TestData());
 		std::cout << boost::format("%4d %lf%%") % epoch % (thisTestScore * 100.0) << std::endl;
 		std::clog << boost::format("FT %d %lf") % epoch % thisTestScore << std::endl;
@@ -220,30 +237,16 @@ template <class TValue> void FineTune(StackedDenoisingAutoEncoder<TValue>& sda, 
 
 template <class TValue> void TestSdA(const LearningSet<TValue>& datasets)
 {
-	const struct
-	{
-		unsigned int MinNeurons;
-		unsigned int MaxNeurons;
-		unsigned int NeuronIncrement;
-		Floating Noise;
-	} LayerConfiguration[]
-	{
-		{ 1, 5000, 2, static_cast<Floating>(0.1) }, // Noise: 0.1
-		{ 1, 5000, 2, static_cast<Floating>(0.2) }, // Noise: 0.2
-		{ 1, 5000, 2, static_cast<Floating>(0.3) }, // Noise: 0.3
-	};
-
 	// seed: 89677
 	std::random_device random;
 	StackedDenoisingAutoEncoder<TValue> sda(random(), datasets.TrainingData().AllComponents());
 	
-	for (unsigned int i = 0; i < sizeof(LayerConfiguration) / sizeof(LayerConfiguration[0]); i++)
+	for (unsigned int i = 0; i < sizeof(DaNoises) / sizeof(DaNoises[0]); i++)
 	{
 		double lastNeuronCost = std::numeric_limits<double>::infinity();
-		for (unsigned int neurons = LayerConfiguration[i].MinNeurons; neurons <= LayerConfiguration[i].MaxNeurons; neurons *= LayerConfiguration[i].NeuronIncrement)
+		for (unsigned int neurons = MinNeurons; ; neurons *= NeuronIncease)
 		{
-			std::cout << "Last neuron cost: " << lastNeuronCost << std::endl;
-			if (PreTrain(sda.HiddenLayers, i, neurons, LayerConfiguration[i].Noise, datasets, lastNeuronCost, neurons / LayerConfiguration[i].NeuronIncrement))
+			if (PreTrain(sda.HiddenLayers, i, neurons, DaNoises[i], datasets, lastNeuronCost, neurons / NeuronIncease))
 				break;
 		}
 	}
