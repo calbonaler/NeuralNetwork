@@ -68,9 +68,32 @@ private:
 
 teed_out tout;
 
+void ShowParameters()
+{
+	tout.s << "All parameters of this experiment are as follows: " << std::endl;
+	tout.s << "Pre-Training: " << std::endl;
+	tout.s << "    Epochs: " << PreTrainingEpochs << std::endl;
+	tout.s << "    Learning Rate: " << PreTrainingLearningRate << std::endl;
+	tout.s << "    Noise Rate: " << std::endl;
+	for (size_t i = 0; i < sizeof(DaNoises) / sizeof(DaNoises[0]); i++)
+		tout.s << "        HL " << i << ": " << DaNoises[i] << std::endl;
+	tout.s << "Fine-Tuning: " << std::endl;
+	tout.s << "    Max Epochs: " << FineTuningEpochs << std::endl;
+	tout.s << "    Learning Rate: " << FineTuningLearningRate << std::endl;
+	tout.s << "    Early Stopping Parameters: " << std::endl;
+	tout.s << "        Default Patience: " << DefaultPatience << std::endl;
+	tout.s << "        Improvement Threshold: " << ImprovementThreshold << std::endl;
+	tout.s << "        Patience Increase: " << PatienceIncrease << std::endl;
+	tout.s << "Number of Neuron Automatic Decision Parameters: " << std::endl;
+	tout.s << "    Minimum Number of Neurons: " << MinNeurons << std::endl;
+	tout.s << "    Number of Neuron Increase: " << NeuronIncease << std::endl;
+	tout.s << "    Converge Constant: " << ConvergeConstant << std::endl;
+}
+
 int main()
 {
 	tout.open("output.log");
+	ShowParameters();
 	auto ls = LoadLearningSet<Floating>(DataSetKind::Caltech101Silhouettes);
 	auto start = std::chrono::system_clock::now();
 	TestSdA(ls);
