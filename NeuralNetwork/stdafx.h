@@ -6,6 +6,7 @@
 #include <chrono>
 #include <functional>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <limits>
 #include <memory>
@@ -20,6 +21,10 @@
 
 #include <cmath>
 #include <cstdint>
+
+// Standard C Libraries
+
+#include <direct.h>
 
 // Boost
 

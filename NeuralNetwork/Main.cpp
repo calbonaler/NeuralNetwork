@@ -8,6 +8,13 @@ enum class DataSetKind
 	Caltech101Silhouettes,
 	PR,
 };
+const char* DataSetNames[]
+{
+	"MNIST",
+	"Cifar-10",
+	"Caltech 101 Silhouettes",
+	"Pattern Recognition Data Set"
+};
 
 template <class TValue> LearningSet<TValue> LoadLearningSet(DataSetKind kind);
 template <class TValue> void TestSdA(const LearningSet<TValue>& datasets);
@@ -99,7 +106,19 @@ void ShowParameters()
 
 int main()
 {
-	tout.open("output.log");
+	std::time_t time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+	std::tm tm;
+	localtime_s(&tm, &time);
+	std::ostringstream sout;
+	sout << "Outputs/";
+	sout << DataSetNames[static_cast<size_t>(UsingDataSet)] << "/";
+	_mkdir(sout.str().c_str());
+	sout << std::setfill('0') << std::setw(4) << tm.tm_year + 1900 << "-"
+		<< std::setfill('0') << std::setw(2) << tm.tm_mon + 1 << "-"
+		<< std::setfill('0') << std::setw(2) << tm.tm_mday << " "
+		<< std::setfill('0') << std::setw(2) << tm.tm_hour << "-"
+		<< std::setfill('0') << std::setw(2) << tm.tm_min << ".log";
+	tout.open(sout.str());
 	ShowParameters();
 	auto ls = LoadLearningSet<Floating>(UsingDataSet);
 	auto start = std::chrono::system_clock::now();
