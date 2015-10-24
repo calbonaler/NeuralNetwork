@@ -307,6 +307,10 @@ private:
 
 template <class TValue> class Cifar10Loader final : public LearningSetLoader<TValue>
 {
+public:
+	Cifar10Loader() : glayscale(false) { }
+	Cifar10Loader(bool glayscale) : glayscale(glayscale) { }
+
 protected:
 	virtual void LoadDataSet(DataSet<TValue>& dataset, const std::string& path)
 	{
@@ -325,12 +329,14 @@ protected:
 	virtual std::string GetTestPath(const std::string& path) { return path + "/test_batch"; }
 
 private:
+	bool glayscale;
+
 	bool LoadSingleFile(DataSet<TValue>& dataset, const std::string& path)
 	{
 		std::ifstream file(path + ".bin", std::ios::binary | std::ios::in);
 		if (!file)
 			return false;
-		dataset.SetDimension(32, 32, 1);
+		dataset.SetDimension(32, 32, glayscale ? 1 : 3);
 		for (size_t i = 0; i < 10000; i++)
 		{
 			dataset.Labels().push_back(ReadByte(file));
@@ -340,11 +346,18 @@ private:
 			std::valarray<uint8_t> greens(dataset.Pixels());
 			for (size_t j = 0; j < greens.size(); j++)
 				greens[j] = ReadByte(file);
-			std::valarray<TValue> image(dataset.Pixels());
-			for (size_t j = 0; j < image.size(); j++)
+			std::valarray<TValue> image(dataset.AllComponents());
+			for (size_t j = 0; j < dataset.Pixels(); j++)
 			{
 				auto blue = ReadByte(file);
-				image[j] = static_cast<TValue>(0.299 * reds[j] + 0.587 * greens[j] + 0.114 * blue) / (std::numeric_limits<uint8_t>::max)();
+				if (glayscale)
+					image[j] = static_cast<TValue>(0.299 * reds[j] + 0.587 * greens[j] + 0.114 * blue) / (std::numeric_limits<uint8_t>::max)();
+				else
+				{
+					image[j * 3 + 0] = static_cast<TValue>(reds[j]) / std::numeric_limits<uint8_t>::max();
+					image[j * 3 + 1] = static_cast<TValue>(greens[j]) / std::numeric_limits<uint8_t>::max();
+					image[j * 3 + 2] = static_cast<TValue>(blue) / std::numeric_limits<uint8_t>::max();
+				}
 			}
 			dataset.Images().push_back(std::move(image));
 		}
