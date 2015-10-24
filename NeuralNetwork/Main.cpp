@@ -26,7 +26,7 @@ typedef double Floating;
 const int PreTrainingEpochs = 15;
 const double PreTrainingLearningRate = 0.001;
 
-const Floating DaNoises[]
+const std::vector<Floating> DaNoises
 {
 	static_cast<Floating>(0.1),
 	static_cast<Floating>(0.2),
@@ -78,14 +78,13 @@ teed_out tout;
 
 void ShowParameters()
 {
-	const size_t layers = sizeof(DaNoises) / sizeof(DaNoises[0]);
-	if (layers > 0)
+	if (!DaNoises.empty())
 	{
 		tout.s << "Pre-Training: " << std::endl;
 		tout.s << "    Epochs: " << PreTrainingEpochs << std::endl;
 		tout.s << "    Learning Rate: " << PreTrainingLearningRate << std::endl;
 		tout.s << "    Noise Rate: " << std::endl;
-		for (size_t i = 0; i < layers; i++)
+		for (size_t i = 0; i < DaNoises.size(); i++)
 			tout.s << "        HL " << i << ": " << DaNoises[i] << std::endl;
 	}
 	tout.s << "Fine-Tuning: " << std::endl;
@@ -95,7 +94,7 @@ void ShowParameters()
 	tout.s << "        Default Patience: " << DefaultPatience << std::endl;
 	tout.s << "        Improvement Threshold: " << ImprovementThreshold << std::endl;
 	tout.s << "        Patience Increase: " << PatienceIncrease << std::endl;
-	if (layers > 0)
+	if (!DaNoises.empty())
 	{
 		tout.s << "Number of Neuron Automatic Decision Parameters: " << std::endl;
 		tout.s << "    Minimum Number of Neurons: " << MinNeurons << std::endl;
@@ -245,7 +244,7 @@ template <class TValue> void TestSdA(const LearningSet<TValue>& datasets)
 	std::random_device random;
 	StackedDenoisingAutoEncoder<TValue> sda(random(), datasets.TrainingData().AllComponents());
 	
-	for (unsigned int i = 0; i < sizeof(DaNoises) / sizeof(DaNoises[0]); i++)
+	for (unsigned int i = 0; i < DaNoises.size(); i++)
 	{
 		double lastNeuronCost = std::numeric_limits<double>::infinity();
 		for (unsigned int neurons = MinNeurons; ; neurons *= NeuronIncease)
@@ -267,7 +266,7 @@ template <class TValue> void TestSdA(const LearningSet<TValue>& datasets)
 		}
 	}
 	
-	if (sizeof(DaNoises) / sizeof(DaNoises[0]) > 0)
+	if (!DaNoises.empty())
 	{
 		tout.s << "Decided Number of Neurons: " << std::endl;
 		for (unsigned int i = 0; i < sda.HiddenLayers.Count(); i++)
