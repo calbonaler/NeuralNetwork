@@ -19,6 +19,13 @@ typedef double Floating;
 const int PreTrainingEpochs = 15;
 const double PreTrainingLearningRate = 0.001;
 
+const Floating DaNoises[]
+{
+	static_cast<Floating>(0.1),
+	static_cast<Floating>(0.2),
+	static_cast<Floating>(0.3),
+};
+
 // Fine-Tuning Parameters
 
 const unsigned int FineTuningEpochs = 1000;
@@ -27,20 +34,14 @@ const unsigned int DefaultPatience = 10;
 const double ImprovementThreshold = 1;//0.995;
 const unsigned int PatienceIncrease = 2;
 
-// Denoising Auto-Encoder Parameters
-
-const Floating DaNoises[]
-{
-	static_cast<Floating>(0.1),
-	static_cast<Floating>(0.2),
-	static_cast<Floating>(0.3),
-};
-
 // Number of Neuron Automatic Decision Parameters
 
 const unsigned int MinNeurons = 1;
 const unsigned int NeuronIncease = 2;
 const double ConvergeConstant = 0.5;
+
+// Using Data Set
+const DataSetKind UsingDataSet = DataSetKind::Caltech101Silhouettes;
 
 class teed_out
 {
@@ -70,12 +71,16 @@ teed_out tout;
 
 void ShowParameters()
 {
-	tout.s << "Pre-Training: " << std::endl;
-	tout.s << "    Epochs: " << PreTrainingEpochs << std::endl;
-	tout.s << "    Learning Rate: " << PreTrainingLearningRate << std::endl;
-	tout.s << "    Noise Rate: " << std::endl;
-	for (size_t i = 0; i < sizeof(DaNoises) / sizeof(DaNoises[0]); i++)
-		tout.s << "        HL " << i << ": " << DaNoises[i] << std::endl;
+	const size_t layers = sizeof(DaNoises) / sizeof(DaNoises[0]);
+	if (layers > 0)
+	{
+		tout.s << "Pre-Training: " << std::endl;
+		tout.s << "    Epochs: " << PreTrainingEpochs << std::endl;
+		tout.s << "    Learning Rate: " << PreTrainingLearningRate << std::endl;
+		tout.s << "    Noise Rate: " << std::endl;
+		for (size_t i = 0; i < layers; i++)
+			tout.s << "        HL " << i << ": " << DaNoises[i] << std::endl;
+	}
 	tout.s << "Fine-Tuning: " << std::endl;
 	tout.s << "    Max Epochs: " << FineTuningEpochs << std::endl;
 	tout.s << "    Learning Rate: " << FineTuningLearningRate << std::endl;
@@ -83,17 +88,20 @@ void ShowParameters()
 	tout.s << "        Default Patience: " << DefaultPatience << std::endl;
 	tout.s << "        Improvement Threshold: " << ImprovementThreshold << std::endl;
 	tout.s << "        Patience Increase: " << PatienceIncrease << std::endl;
-	tout.s << "Number of Neuron Automatic Decision Parameters: " << std::endl;
-	tout.s << "    Minimum Number of Neurons: " << MinNeurons << std::endl;
-	tout.s << "    Number of Neuron Increase: " << NeuronIncease << std::endl;
-	tout.s << "    Converge Constant: " << ConvergeConstant << std::endl;
+	if (layers > 0)
+	{
+		tout.s << "Number of Neuron Automatic Decision Parameters: " << std::endl;
+		tout.s << "    Minimum Number of Neurons: " << MinNeurons << std::endl;
+		tout.s << "    Number of Neuron Increase: " << NeuronIncease << std::endl;
+		tout.s << "    Converge Constant: " << ConvergeConstant << std::endl;
+	}
 }
 
 int main()
 {
 	tout.open("output.log");
 	ShowParameters();
-	auto ls = LoadLearningSet<Floating>(DataSetKind::Caltech101Silhouettes);
+	auto ls = LoadLearningSet<Floating>(UsingDataSet);
 	auto start = std::chrono::system_clock::now();
 	TestSdA(ls);
 	auto end = std::chrono::system_clock::now();
@@ -240,9 +248,12 @@ template <class TValue> void TestSdA(const LearningSet<TValue>& datasets)
 		}
 	}
 	
-	tout.s << "Decided Number of Neurons: " << std::endl;
-	for (unsigned int i = 0; i < sda.HiddenLayers.Count(); i++)
-		tout.s << "    Number of Neurons of Hidden Layer " << i << ": " << sda.HiddenLayers[i].Weight.Row() << std::endl;
+	if (sizeof(DaNoises) / sizeof(DaNoises[0]) > 0)
+	{
+		tout.s << "Decided Number of Neurons: " << std::endl;
+		for (unsigned int i = 0; i < sda.HiddenLayers.Count(); i++)
+			tout.s << "    Number of Neurons of Hidden Layer " << i << ": " << sda.HiddenLayers[i].Weight.Row() << std::endl;
+	}
 
 	double bestTestScore = std::numeric_limits<double>::infinity();
 	sda.SetLogisticRegressionLayer(datasets.ClassCount);
