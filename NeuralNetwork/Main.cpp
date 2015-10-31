@@ -45,7 +45,7 @@ const unsigned int PatienceIncrease = 2;
 
 const unsigned int MinNeurons = 1;
 const unsigned int NeuronIncease = 2;
-const double ConvergeConstant = 1;
+const double ConvergeConstant = 0.002;
 
 // Using Data Set
 const DataSetKind UsingDataSet = DataSetKind::MNIST;
@@ -247,14 +247,14 @@ template <class TValue> void TestSdA(const LearningSet<TValue>& datasets)
 	for (unsigned int i = 0; i < DaNoises.size(); i++)
 	{
 		double lastNeuronCost = std::numeric_limits<double>::infinity();
-		for (unsigned int neurons = MinNeurons; ; neurons *= NeuronIncease)
+		for (unsigned int neurons = MinNeurons, prevNeurons = 0; ; prevNeurons = neurons, neurons = prevNeurons * NeuronIncease)
 		{
 			sda.HiddenLayers.Set(i, neurons);
 			tout.s << "Number of Neurons of Hidden Layer " << i << ": "<< neurons << std::endl;
 			sda.HiddenLayers[i].Train(datasets.TrainingData(), static_cast<TValue>(PreTrainingLearningRate), DaNoises[i]);
 			double currentTestCost = sda.HiddenLayers[i].ComputeCost(datasets.ValidationData(), DaNoises[i]);
 			tout.s << 1 << " " << currentTestCost << std::endl;
-			auto costDifference = abs((currentTestCost - lastNeuronCost) / (neurons * (NeuronIncease - 1) / NeuronIncease));
+			auto costDifference = abs((currentTestCost - lastNeuronCost) / (neurons - prevNeurons)) / lastNeuronCost;
 			tout.s << "Cost Difference per Neuron: " << costDifference << std::endl;
 			if (costDifference <= ConvergeConstant)
 				break;
