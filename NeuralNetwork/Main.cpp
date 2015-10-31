@@ -45,10 +45,10 @@ const unsigned int PatienceIncrease = 2;
 
 const unsigned int MinNeurons = 1;
 const unsigned int NeuronIncease = 2;
-const double ConvergeConstant = 0.5;
+const double ConvergeConstant = 1;
 
 // Using Data Set
-const DataSetKind UsingDataSet = DataSetKind::Caltech101Silhouettes;
+const DataSetKind UsingDataSet = DataSetKind::MNIST;
 
 class teed_out
 {
@@ -251,18 +251,20 @@ template <class TValue> void TestSdA(const LearningSet<TValue>& datasets)
 		{
 			sda.HiddenLayers.Set(i, neurons);
 			tout.s << "Number of Neurons of Hidden Layer " << i << ": "<< neurons << std::endl;
-			double currentTestCost;
-			for (unsigned int epoch = 1; epoch <= PreTrainingEpochs; epoch++)
-			{
-				sda.HiddenLayers[i].Train(datasets.TrainingData(), static_cast<TValue>(PreTrainingLearningRate), DaNoises[i]);
-				currentTestCost = sda.HiddenLayers[i].ComputeCost(datasets.ValidationData(), DaNoises[i]);
-				tout.s << epoch << " " << currentTestCost << std::endl;
-			}
+			sda.HiddenLayers[i].Train(datasets.TrainingData(), static_cast<TValue>(PreTrainingLearningRate), DaNoises[i]);
+			double currentTestCost = sda.HiddenLayers[i].ComputeCost(datasets.ValidationData(), DaNoises[i]);
+			tout.s << 1 << " " << currentTestCost << std::endl;
 			auto costDifference = abs((currentTestCost - lastNeuronCost) / (neurons * (NeuronIncease - 1) / NeuronIncease));
 			tout.s << "Cost Difference per Neuron: " << costDifference << std::endl;
-			lastNeuronCost = currentTestCost;
 			if (costDifference <= ConvergeConstant)
 				break;
+			lastNeuronCost = currentTestCost;
+		}
+		for (unsigned int epoch = 2; epoch <= PreTrainingEpochs; epoch++)
+		{
+			sda.HiddenLayers[i].Train(datasets.TrainingData(), static_cast<TValue>(PreTrainingLearningRate), DaNoises[i]);
+			double currentTestCost = sda.HiddenLayers[i].ComputeCost(datasets.ValidationData(), DaNoises[i]);
+			tout.s << epoch << " " << currentTestCost << std::endl;
 		}
 	}
 	
