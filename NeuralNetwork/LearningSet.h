@@ -336,7 +336,7 @@ private:
 		std::ifstream file(path + ".bin", std::ios::binary | std::ios::in);
 		if (!file)
 			return false;
-		dataset.SetDimension(32, 32, glayscale ? 1 : 3);
+		dataset.SetDimension(32u, 32u, glayscale ? 1u : 3u);
 		for (size_t i = 0; i < 10000; i++)
 		{
 			dataset.Labels().push_back(ReadByte(file));
